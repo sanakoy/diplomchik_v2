@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+ postgres:
+   image: postgres:15
+   container_name: db_local
+   environment:
+     POSTGRES_USER: user
+     POSTGRES_PASSWORD: 123qwe
+     POSTGRES_DB: db_local
+   ports:
+     - "5433:5432"
+   volumes:
+     - postgres_data_local:/var/lib/postgresql/data
+   restart: unless-stopped
+ postgres_test:
+   image: postgres:15
+   container_name: db_local_test
+   environment:
+     POSTGRES_USER: user
+     POSTGRES_PASSWORD: 123qwe
+     POSTGRES_DB: db_local_test
+   ports:
+     - "5434:5432"
+   volumes:
+     - postgres_data_local_test:/var/lib/postgresql/data
+   restart: unless-stopped
+
+volumes:
+ postgres_data_local:
+ postgres_data_local_test:
+
+
