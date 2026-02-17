@@ -1,0 +1,115 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+pythonenv*
+
+# Virtual Environment
+venv/
+env/
+.venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Project specific
+instance/
+.webassets-cache
+.env
+.flaskenv
+*.log
+logs/
+.env.local
+.env.production
+.env.development
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+*.db3
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+MANIFEST
+
+# Docker
+*.pid
+docker-compose.override.yml
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# Poetry
+poetry.lock
+.poetry/
+
+# Uvicorn
+uvicorn.pid
+
+# Alembic (если используете миграции)
+alembic/versions/*.pyc
+alembic/versions/__pycache__/
+
+# Logs and databases
+*.log
+*.pid
+*.sql
+.sqlite3
+
+# Uploads
+uploads/
+media/
+static/uploads/
+
+# Environment variables
+*.env
+.envrc
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Redis
+dump.rdb
+
+# PDF/Media files (если генерируете)
+*.pdf
+*.xlsx
+*.csv
+!example.csv  # если хотите сохранить пример
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
