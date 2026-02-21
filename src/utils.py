@@ -1,10 +1,11 @@
 from uuid import UUID
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 async def get_obj_by_id(
     id: UUID,
-    session,
+    session: AsyncSession,
     model,
 ):
     obj = (
@@ -32,3 +33,26 @@ def add_filters(query, query_params):
         query = query_params.filter(query)
 
     return query
+
+
+async def update_obj_by_id(id: UUID, session: AsyncSession, model, data: dict):
+    obj = await get_obj_by_id(id=id, session=session, model=model)
+    if not obj:
+        return None
+
+    for key, value in data.items():
+        setattr(obj, key, value)
+
+    await session.commit()
+    await session.refresh(obj)
+    return obj
+
+
+async def delete_obj_by_id(id: UUID, session: AsyncSession, model) -> bool:
+    obj = await get_obj_by_id(id=id, session=session, model=model)
+    if not obj:
+        return False
+
+    await session.delete(obj)
+    await session.commit()
+    return obj

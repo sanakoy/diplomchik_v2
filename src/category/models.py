@@ -1,4 +1,3 @@
-from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 from sqlalchemy import ForeignKey, String
@@ -7,22 +6,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 if TYPE_CHECKING:
     from src.auth.models import User
-
-
-class Plan(Base):
-    __tablename__ = "plan"
-
-    precent: Mapped[Decimal] = mapped_column()
-    is_global: Mapped[bool] = mapped_column()
-    date: Mapped[datetime] = mapped_column()
-    plan_sum: Mapped[Decimal] = mapped_column()
-
-    category: Mapped[list["Category"]] = relationship(
-        back_populates="plan", lazy="selectin"
-    )
-
-    def __str__(self):
-        return str(self.plan_sum)
+    from src.operation.models import Operation
+    from src.plan.models import Plan
 
 
 class Category(Base):
@@ -31,6 +16,7 @@ class Category(Base):
     name: Mapped[str] = mapped_column(String(80))
     is_profit: Mapped[bool] = mapped_column()
     image_url: Mapped[str] = mapped_column(nullable=True)
+    cat_sum: Mapped[Decimal] = mapped_column(nullable=True, default=0)
     parent_id: Mapped[str] = mapped_column(
         ForeignKey("category.id", ondelete="CASCADE"), nullable=True
     )
@@ -47,23 +33,3 @@ class Category(Base):
 
     def __str__(self):
         return self.name
-
-
-class Operation(Base):
-    __tablename__ = "operation"
-
-    sum: Mapped[Decimal] = mapped_column(default=0)
-    comment: Mapped[str] = mapped_column(String(100), nullable=True, default="")
-    date: Mapped[datetime] = mapped_column(nullable=True)
-    category_id: Mapped[str] = mapped_column(
-        ForeignKey("category.id", ondelete="CASCADE")
-    )
-
-    category: Mapped["Category"] = relationship(
-        back_populates="operation", lazy="joined"
-    )
-
-    def __str__(self):
-        if self.comment == None:
-            return str(self.sum)
-        return str(self.sum) + " " + self.comment
