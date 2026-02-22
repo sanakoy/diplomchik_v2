@@ -15,8 +15,8 @@ class BaseService:
     def __init__(self, session):
         self.session = session
 
-    async def get_obj_by_id(self, id):
-        obj = await get_obj_by_id(id=id, session=self.session, model=self.model)
+    async def get_obj_by_id(self, id, model=model):
+        obj = await get_obj_by_id(id=id, session=self.session, model=model)
         return obj
 
     async def create_obj(self, data: dict):
@@ -31,10 +31,10 @@ class BaseService:
         objs = await get_objs(self.session, self.model, query_params)
         return objs
 
-    async def update_obj_by_id(self, id: UUID, data: dict):
+    async def update_obj(self, id: UUID, data: dict):
         return await update_obj_by_id(
             id=id, session=self.session, model=self.model, data=data
         )
 
-    async def delete_obj_by_id(self, id: UUID):
+    async def delete_obj(self, id: UUID):
         return await delete_obj_by_id(id=id, session=self.session, model=self.model)

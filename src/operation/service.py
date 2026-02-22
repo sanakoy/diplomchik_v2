@@ -29,7 +29,7 @@ class OperationService(BaseService):
         update_data: UpdateOperationRequest,
     ):
         update_data_dict: dict = update_data.model_dump(exclude_unset=True)
-        updated_operation_obj: Operation = await self.update_obj_by_id(
+        updated_operation_obj: Operation = await self.update_obj(
             operation_id, update_data_dict
         )
 
@@ -41,7 +41,7 @@ class OperationService(BaseService):
             )
 
     async def delete_operation(self, operation_id: UUID):
-        deleted_operation_obj: Operation = await self.delete_obj_by_id(operation_id)
+        deleted_operation_obj: Operation = await self.delete_obj(operation_id)
 
         await update_cat_sum(
             session=self.session,
