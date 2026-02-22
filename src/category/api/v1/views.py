@@ -1,3 +1,4 @@
+from uuid import UUID
 from fastapi import APIRouter, Depends
 
 from src.auth.authorization import get_current_user_by_access_token
@@ -5,7 +6,9 @@ from src.auth.schemas import UserToken
 from src.category.schemas import (
     CategoriesPage,
     CategoryPageResponse,
+    CreateCategoryRequest,
     GroupedOperationResponse,
+    UpdateCategoryRequest,
 )
 from src.category.service import CategoryService, get_category_service
 
@@ -33,3 +36,34 @@ async def get_statistic(
     auth_user: UserToken = Depends(get_current_user_by_access_token),
 ) -> GroupedOperationResponse:
     return await service.get_statistic(auth_user, operation, year, month)
+
+
+@category.post("/create", summary="Создание категории")
+async def create_category(
+    create_data: CreateCategoryRequest,
+    service: CategoryService = Depends(get_category_service),
+    auth_user: UserToken = Depends(get_current_user_by_access_token),
+):
+    new_category_obj = await service.create_category(create_data, auth_user)
+    return {"message": "Категория успешно создана"}
+
+
+@category.patch("/update/{category_id}", summary="Обновление категории")
+async def update_category(
+    category_id: UUID,
+    update_data: UpdateCategoryRequest,
+    service: CategoryService = Depends(get_category_service),
+    auth_user: UserToken = Depends(get_current_user_by_access_token),
+):
+    updated_category_obj = await service.update_category(category_id, update_data)
+    return {"message": "Категория успешно обновлена"}
+
+
+@category.delete("/delete/{category_id}", summary="Удаление категории")
+async def delete_category(
+    category_id: UUID,
+    service: CategoryService = Depends(get_category_service),
+    auth_user: UserToken = Depends(get_current_user_by_access_token),
+):
+    deleted_category_obj = await service.delete_category(category_id)
+    return {"message": ("Категория успешно удалена")}

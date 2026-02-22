@@ -1,5 +1,7 @@
 from decimal import Decimal
 from uuid import UUID
+
+from pydantic import Field, model_validator
 from src.schemas import BaseSchema
 from datetime import datetime
 
@@ -46,3 +48,20 @@ class GroupedOperationResponse(BaseSchema):
     cats_sum: dict[str, float | None] | None = None
     total: float | None = 0
     months_year: dict[str, list[int]] | None = None
+
+
+class CreateCategoryRequest(BaseSchema):
+    name: str
+    image_url: str | None = None
+    operation: str = Field(exclude=True)
+    is_profit: bool | None = None
+
+    @model_validator(mode="after")
+    def set_is_profit(self) -> "CreateCategoryRequest":
+        self.is_profit = self.operation == "profit"
+        return self
+
+
+class UpdateCategoryRequest(BaseSchema):
+    name: str | None = None
+    image_url: str | None = None

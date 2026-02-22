@@ -5,8 +5,10 @@ from src.auth.schemas import UserToken
 from src.category.schemas import (
     CategoriesPage,
     CategoryView,
+    CreateCategoryRequest,
     GroupedOperationResponse,
     OperationInGroup,
+    UpdateCategoryRequest,
 )
 from src.database import get_session
 from src.category.models import Category
@@ -189,6 +191,29 @@ class CategoryService(BaseService):
             months_year[year].append(month)
 
         return months_year
+
+    async def create_category(
+        self, create_data: CreateCategoryRequest, auth_user: UserToken
+    ):
+        create_data_dict: dict = create_data.model_dump(exclude_unset=True)
+        create_data_dict.update({"user_id": auth_user.id})
+        new_category_obj: Category = await self.create_obj(create_data_dict)
+
+        return new_category_obj
+
+    async def update_category(
+        self, category_id: UUID, update_data: UpdateCategoryRequest
+    ):
+        update_data_dict: dict = update_data.model_dump(exclude_unset=True)
+        updated_category_obj: Category = await self.update_obj(
+            category_id, update_data_dict
+        )
+
+        return updated_category_obj
+
+    async def delete_category(self, category_id: UUID):
+        deleted_category_obj: Category = await self.delete_obj(category_id)
+        return deleted_category_obj
 
 
 async def get_category_service(
