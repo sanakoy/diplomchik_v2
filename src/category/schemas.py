@@ -21,7 +21,7 @@ class CategoryView(BaseSchema):
 
 class CategoriesPage(BaseSchema):
     cats: list[CategoryView]
-    total: float
+    total: float | None = 0.0
     operation: str
     cats_sum: dict[str, float]
 

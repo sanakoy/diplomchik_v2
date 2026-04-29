@@ -27,6 +27,17 @@ async def get_spending_categories(
     return CategoryPageResponse(data=category_page_data)
 
 
+@category.get("/profit", summary="Вывод категорий доходов")
+async def get_profit_categories(
+    service: CategoryService = Depends(get_category_service),
+    auth_user: UserToken = Depends(get_current_user_by_access_token),
+):
+    category_page_data: CategoriesPage = await service.get_categories(
+        auth_user=auth_user, is_profit=True
+    )
+    return CategoryPageResponse(data=category_page_data)
+
+
 @category.get("/statistic")
 async def get_statistic(
     operation: str,
