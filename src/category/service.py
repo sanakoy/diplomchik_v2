@@ -1,6 +1,7 @@
 from datetime import datetime
 from fastapi import Depends
-from sqlalchemy import UUID, extract, func, select, text
+from sqlalchemy import and_, extract, func, select, text
+from sqlalchemy.orm import joinedload
 from src.auth.schemas import UserToken
 from src.category.schemas import (
     CategoriesPage,
@@ -21,78 +22,113 @@ class CategoryService(BaseService):
     model = Category
 
     async def get_categories(self, auth_user: UserToken, is_profit: bool):
-        subquery = (
-            select(Category.name, func.sum(Operation.sum))
-            .join(Category, Operation.category_id == Category.id)
-            .filter(
-                Category.is_profit == is_profit,
-                Category.user_id == auth_user.id,
-                extract("year", Operation.date) == datetime.now().year,
-                extract("month", Operation.date) == datetime.now().month,
-            )
-            .group_by(Category.id, Category.name)
-        ).subquery()
-
-        query = select(subquery)
-        cats_sum = (await self.session.execute(query)).mappings().all()
-        cats_sum_dict = {}
-        for cat in cats_sum:
-            cats_sum_dict[cat.get("name")] = cat.get("_no_label")
-
-        query = select(func.sum(subquery.c.sum))
-        total = (await self.session.execute(query)).one_or_none()
-
         query = (
-            select(Category)
-            .filter(Category.user_id == auth_user.id, is_profit == is_profit)
-            .order_by("created_at")
+            select(
+                Category,
+                func.sum(Operation.sum).label("cat_sum")
+            )
+            .outerjoin(
+                Operation,
+                and_(
+                    Operation.category_id == Category.id,
+                    extract("year", Operation.date) == datetime.now().year,
+                    extract("month", Operation.date) == datetime.now().month,
+                )
+            )
+            .filter(
+                Category.user_id == auth_user.id,
+                Category.is_profit == is_profit,
+            )
+            .group_by(Category.id)
+            .order_by(Category.date_create)
         )
-        cat_objs: list[Category] = (await self.session.execute(query)).scalars().all()
-        serialized_cat_objs: list[CategoryView] = []
-        for cat_obj in cat_objs:
-            serialized_cat_objs.append(
+        rows = (await self.session.execute(query)).all()
+
+        # Запрос 2 — подгружаем планы отдельно через selectinload
+        cat_ids = [cat_obj.id for cat_obj, _ in rows]
+        plans_query = (
+            select(Category)
+            .options(joinedload(Category.plan))
+            .filter(Category.id.in_(cat_ids))
+        )
+        cats_with_plans = (await self.session.execute(plans_query)).scalars().all()
+        plans_map = {cat.id: cat.plan for cat in cats_with_plans}
+
+        serialized_cats = []
+        cats_sum_dict = {}
+        total = 0.0
+
+        for cat_obj, cat_sum in rows:
+            sum_val = float(cat_sum) if cat_sum else 0.0
+            cats_sum_dict[cat_obj.name] = sum_val
+            total += sum_val
+            plan = plans_map.get(cat_obj.id)
+
+            serialized_cats.append(
                 CategoryView(
                     id=cat_obj.id,
                     name=cat_obj.name,
-                    cat_sum=None,
-                    parent_id=cat_obj.parent_id,
+                    cat_sum=sum_val,
                     is_profit=cat_obj.is_profit,
                     image_url=cat_obj.image_url,
                     plan_id=cat_obj.plan_id,
                     user_id=cat_obj.user_id,
-                    percent=(
-                        float(cat_obj.plan.percent if cat_obj.plan.percent else 0)
-                        if cat_obj.plan
-                        else None
-                    ),
-                    plan_sum=float(cat_obj.plan.plan_sum) if cat_obj.plan else None,
+                    percent=float(plan.percent or 0) if plan else None,
+                    plan_sum=float(plan.plan_sum) if plan else None,
                 )
             )
 
-        category_page_data: CategoriesPage = CategoriesPage(
-            cats=serialized_cat_objs,
-            total=total[0] if total else 0,
+        return CategoriesPage(
+            cats=serialized_cats,
+            total=total,
             operation="profit" if is_profit else "spending",
             cats_sum=cats_sum_dict,
         )
-        return category_page_data
+
 
     async def get_statistic(
         self, auth_user: UserToken, operation: str, year: int, month: int
     ):
         is_profit = operation == "profit"
+        
+        # 1. Запрос к операциям (тянет операции + категории одним запросом)
         operations_query = self.get_operations_query(
             user_id=auth_user.id, is_profit=is_profit, year=year, month=month
         )
+        result = await self.session.execute(operations_query)
+        operations: list[Operation] = result.scalars().all()
 
-        grouped_operations: dict[str, list[OperationInGroup]] = (
-            await self.get_grouped_operations(operations_query)
-        )
+        # 2. Агрегация данных в памяти (Заменяет get_grouped_operations, get_cats_sum и get_total)
+        grouped_operations: dict[str, list[OperationInGroup]] = {}
+        cats_sum_dict: dict[str, float] = {}
+        total = 0.0
 
-        operations_subquery = operations_query.subquery()
-        cats_sum_dict = await self.get_cats_sum(operations_subquery)
-        total = await self.get_total(operations_subquery)
+        for op in operations:
+            # Кроссплатформенный формат "18 May" (без ведущих нулей, работает и на Linux, и на Windows)
+            day_key = f"{op.date.day} {op.date.strftime('%B')}"
+            
+            op_sum = float(op.sum) if op.sum else 0.0
+            total += op_sum
+            
+            # Считаем сумму по категориям
+            cat_name = op.category.name
+            cats_sum_dict[cat_name] = cats_sum_dict.get(cat_name, 0.0) + op_sum
 
+            # Группируем по дням
+            if day_key not in grouped_operations:
+                grouped_operations[day_key] = []
+
+            grouped_operations[day_key].append(
+                OperationInGroup(
+                    id=op.id,
+                    sum=op_sum,
+                    comment=op.comment,
+                    cat_name=cat_name,
+                    image_url=op.category.image_url,
+                )
+            )
+
+        # 3. Запрос для фильтров (история месяцев и лет) — его оставляем в БД
         months_year = await self.get_months_year(
             user_id=auth_user.id, is_profit=is_profit
         )
@@ -107,39 +143,13 @@ class CategoryService(BaseService):
             months_year=months_year,
         )
 
-    async def get_grouped_operations(
-        self, operations_query
-    ) -> dict[str, list[OperationInGroup]]:
-
-        result = await self.session.execute(operations_query)
-        operations: list[Operation] = result.scalars().all()
-
-        grouped_operations: dict[str, list[OperationInGroup]] = {}
-        for op in operations:
-            # Форматируем дату как "18 February"
-            # day_key = op.date.strftime("%-d %B")  # Linux/Mac
-            day_key = op.date.strftime("%#d %B")  # Windows
-
-            if day_key not in grouped_operations:
-                grouped_operations[day_key] = []
-
-            grouped_operations[day_key].append(
-                OperationInGroup(
-                    id=op.id,
-                    sum=op.sum,
-                    comment=op.comment,
-                    cat_name=op.category.name,
-                    image_url=op.category.image_url,
-                )
-            )
-        return grouped_operations
-
     def get_operations_query(
-        self, user_id: UUID, is_profit: bool, year: int, month: int
+        self, user_id: int, is_profit: bool, year: int, month: int
     ):
         return (
             select(Operation)
             .join(Category, Operation.category_id == Category.id)
+            .options(joinedload(Operation.category))
             .filter(
                 Category.user_id == user_id,
                 Category.is_profit == is_profit,
@@ -149,26 +159,8 @@ class CategoryService(BaseService):
             .order_by(Operation.date.desc())
         )
 
-    async def get_cats_sum(self, operations_subquery) -> dict[str, float]:
-        cats_sum_query = (
-            select(Category.name, func.sum(operations_subquery.c.sum))
-            .join(Category, operations_subquery.c.category_id == Category.id)
-            .group_by(Category.id, Category.name)
-        )
-        cats_sum = (await self.session.execute(cats_sum_query)).mappings().all()
-        cats_sum_dict: dict[str, float] = {}
-        for cat in cats_sum:
-            cats_sum_dict[cat.get("name")] = cat.get("sum")
-
-        return cats_sum_dict
-
-    async def get_total(self, operations_subquery) -> float:
-        total_query = select(func.sum(operations_subquery.c.sum))
-        total = (await self.session.execute(total_query)).one_or_none()
-        return total[0] if total else 0.0
-
     async def get_months_year(
-        self, user_id: UUID, is_profit: bool
+        self, user_id: int, is_profit: bool
     ) -> dict[str, list[int]]:
         months_query = (
             select(
@@ -184,11 +176,12 @@ class CategoryService(BaseService):
 
         months_year: dict[str, list[int]] = {}
         for row in result:
-            year = str(int(row["year"]))
-            month = int(row["month"])
-            if year not in months_year:
-                months_year[year] = []
-            months_year[year].append(month)
+            if row["year"] is not None and row["month"] is not None:
+                year_str = str(int(row["year"]))
+                month_int = int(row["month"])
+                if year_str not in months_year:
+                    months_year[year_str] = []
+                months_year[year_str].append(month_int)
 
         return months_year
 
@@ -202,7 +195,7 @@ class CategoryService(BaseService):
         return new_category_obj
 
     async def update_category(
-        self, category_id: UUID, update_data: UpdateCategoryRequest
+        self, category_id: int, update_data: UpdateCategoryRequest
     ):
         update_data_dict: dict = update_data.model_dump(exclude_unset=True)
         updated_category_obj: Category = await self.update_obj(
@@ -211,7 +204,7 @@ class CategoryService(BaseService):
 
         return updated_category_obj
 
-    async def delete_category(self, category_id: UUID):
+    async def delete_category(self, category_id: int):
         deleted_category_obj: Category = await self.delete_obj(category_id)
         return deleted_category_obj
 

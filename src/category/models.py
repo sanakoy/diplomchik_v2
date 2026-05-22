@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 from sqlalchemy import ForeignKey, String
@@ -17,18 +18,17 @@ class Category(Base):
     is_profit: Mapped[bool] = mapped_column()
     image_url: Mapped[str] = mapped_column(nullable=True)
     cat_sum: Mapped[Decimal] = mapped_column(nullable=True, default=0)
-    parent_id: Mapped[str] = mapped_column(
-        ForeignKey("category.id", ondelete="CASCADE"), nullable=True
-    )
-    plan_id: Mapped[str] = mapped_column(
+    plan_id: Mapped[int] = mapped_column(
         ForeignKey("plan.id", ondelete="CASCADE"), nullable=True
     )
-    user_id: Mapped[str] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"))
+    date_create: Mapped[datetime] = mapped_column(nullable=True)
+    date_upd_cat_sum: Mapped[datetime] = mapped_column(nullable=True)
 
-    plan: Mapped["Plan"] = relationship(back_populates="category", lazy="joined")
-    user: Mapped["User"] = relationship(back_populates="category", lazy="joined")
+    plan: Mapped["Plan"] = relationship(back_populates="category", lazy="raise")
+    user: Mapped["User"] = relationship(back_populates="category", lazy="raise")
     operation: Mapped[list["Operation"]] = relationship(
-        back_populates="category", lazy="selectin"
+        back_populates="category", lazy="raise"
     )
 
     def __str__(self):

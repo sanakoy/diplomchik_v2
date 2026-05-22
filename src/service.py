@@ -1,4 +1,3 @@
-from uuid import UUID
 from src.utils import (
     delete_obj_by_id,
     get_obj_by_id,
@@ -31,10 +30,10 @@ class BaseService:
         objs = await get_objs(self.session, self.model, query_params)
         return objs
 
-    async def update_obj(self, id: UUID, data: dict):
+    async def update_obj(self, id: int, data: dict):
         return await update_obj_by_id(
             id=id, session=self.session, model=self.model, data=data
         )
 
-    async def delete_obj(self, id: UUID):
+    async def delete_obj(self, id: int):
         return await delete_obj_by_id(id=id, session=self.session, model=self.model)

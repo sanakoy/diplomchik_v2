@@ -42,7 +42,7 @@ async def get_user_by_id(
     session: AsyncSession = Depends(get_session),
 ) -> User | None:
     user_obj = (
-        await session.execute(select(User).where(User.id == user_id))
+        await session.execute(select(User).where(User.id == int(user_id)))
     ).scalar_one_or_none()
     return user_obj
 

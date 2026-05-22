@@ -1,5 +1,4 @@
 from decimal import Decimal
-from uuid import UUID
 from fastapi import Depends
 from src.category.utils import update_cat_sum
 from src.operation.models import Operation
@@ -25,7 +24,7 @@ class OperationService(BaseService):
 
     async def update_operation(
         self,
-        operation_id: UUID,
+        operation_id: int,
         update_data: UpdateOperationRequest,
     ):
         update_data_dict: dict = update_data.model_dump(exclude_unset=True)
@@ -40,7 +39,7 @@ class OperationService(BaseService):
                 sum_diff=Decimal(updated_operation_obj.sum),
             )
 
-    async def delete_operation(self, operation_id: UUID):
+    async def delete_operation(self, operation_id: int):
         deleted_operation_obj: Operation = await self.delete_obj(operation_id)
 
         await update_cat_sum(

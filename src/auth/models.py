@@ -11,4 +11,4 @@ class User(Base):
     username: Mapped[str] = mapped_column(unique=True)
     hashed_password: Mapped[str] = mapped_column()
 
-    category: Mapped[list["Category"]] = relationship(back_populates="user", lazy="selectin")
+    category: Mapped[list["Category"]] = relationship(back_populates="user", lazy="raise")

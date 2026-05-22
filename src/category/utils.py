@@ -1,6 +1,5 @@
 from decimal import Decimal
 from sqlalchemy import select
-from uuid import UUID
 from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.category.models import Category
@@ -10,7 +9,7 @@ from src.utils import update_obj_by_id
 
 
 async def update_cat_sum(
-    session: AsyncSession, category_id: UUID, sum_diff: Decimal
+    session: AsyncSession, category_id: int, sum_diff: Decimal
 ) -> None:
     query = select(func.sum(Operation.sum)).filter(Operation.category_id == category_id)
     cat_sum: Decimal = (await session.execute(query)).scalar() or 0

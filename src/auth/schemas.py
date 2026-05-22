@@ -1,4 +1,3 @@
-from uuid import UUID
 from src.schemas import BaseSchema
 
 
@@ -8,4 +7,4 @@ class Token(BaseSchema):
     token_type: str = "Bearer"
 
 class UserToken(BaseSchema):
-    id: UUID
+    id: int

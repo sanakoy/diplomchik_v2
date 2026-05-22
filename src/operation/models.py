@@ -12,12 +12,12 @@ class Operation(Base):
     sum: Mapped[Decimal] = mapped_column(default=0)
     comment: Mapped[str] = mapped_column(String(100), nullable=True, default="")
     date: Mapped[datetime] = mapped_column(nullable=True)
-    category_id: Mapped[str] = mapped_column(
+    category_id: Mapped[int] = mapped_column(
         ForeignKey("category.id", ondelete="CASCADE")
     )
 
     category: Mapped["Category"] = relationship(
-        back_populates="operation", lazy="joined"
+        back_populates="operation", lazy="raise"
     )
 
     def __str__(self):

@@ -1,4 +1,3 @@
-from uuid import UUID
 from fastapi import APIRouter, Depends
 
 from src.auth.authorization import get_current_user_by_access_token
@@ -23,7 +22,7 @@ async def create_operation(
 
 @operation.patch("/update/{operation_id}")
 async def update_operation(
-    operation_id: UUID,
+    operation_id: int,
     data: UpdateOperationRequest,
     service: OperationService = Depends(get_operation_service),
     auth_user: UserToken = Depends(get_current_user_by_access_token),
@@ -34,7 +33,7 @@ async def update_operation(
 
 @operation.delete("/delete/{operation_id}")
 async def delete_operation(
-    operation_id: UUID,
+    operation_id: int,
     service: OperationService = Depends(get_operation_service),
     auth_user: UserToken = Depends(get_current_user_by_access_token),
 ):

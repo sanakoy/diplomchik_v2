@@ -1,4 +1,3 @@
-from uuid import UUID
 from fastapi import APIRouter, Depends
 from fastapi.params import Depends
 from src.auth.authorization import get_current_user_by_access_token
@@ -25,7 +24,7 @@ async def create_plan(
 
 @plan.patch("/update/{plan_id}", summary="Обновление плана для категории")
 async def update_plan(
-    plan_id: UUID,
+    plan_id: int,
     data: UpdatePlanRequest,
     service: PlanService = Depends(get_plan_service),
     auth_user: UserToken = Depends(get_current_user_by_access_token),
@@ -36,7 +35,7 @@ async def update_plan(
 
 @plan.delete("/delete/{plan_id}")
 async def delete_plan(
-    plan_id: UUID,
+    plan_id: int,
     service: PlanService = Depends(get_plan_service),
     auth_user: UserToken = Depends(get_current_user_by_access_token),
 ):

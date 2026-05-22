@@ -1,8 +1,6 @@
 from decimal import Decimal
-from uuid import UUID
 from fastapi import Depends
 from src.category.models import Category
-from src.category.utils import update_cat_sum
 from src.plan.models import Plan
 from src.plan.schemas import CreatePlanRequest, UpdatePlanRequest, UpdatePlanRequest
 from src.service import BaseService
@@ -35,7 +33,7 @@ class PlanService(BaseService):
 
     async def update_plan(
         self,
-        plan_id: UUID,
+        plan_id: int,
         update_data: UpdatePlanRequest,
     ):
         category_obj: Category = await self.get_obj_by_id(
@@ -54,7 +52,7 @@ class PlanService(BaseService):
 
         return updated_plan_obj
 
-    async def delete_plan(self, plan_id: UUID):
+    async def delete_plan(self, plan_id: int):
         deleted_plan_obj: Plan = await self.delete_obj(plan_id)
 
         return deleted_plan_obj

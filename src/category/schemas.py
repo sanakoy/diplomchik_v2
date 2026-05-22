@@ -1,5 +1,4 @@
 from decimal import Decimal
-from uuid import UUID
 
 from pydantic import Field, model_validator
 from src.schemas import BaseSchema
@@ -7,14 +6,13 @@ from datetime import datetime
 
 
 class CategoryView(BaseSchema):
-    id: UUID
+    id: int
     name: str
     cat_sum: float | None = None
-    parent_id: UUID | None = None
     is_profit: bool
     image_url: str | None = None
-    plan_id: UUID | None = None
-    user_id: UUID
+    plan_id: int | None = None
+    user_id: int
     percent: float | None = None
     plan_sum: float | None = None
 
@@ -31,7 +29,7 @@ class CategoryPageResponse(BaseSchema):
 
 
 class OperationInGroup(BaseSchema):
-    id: UUID
+    id: int
     sum: float
     comment: str | None = None
     cat_name: str
@@ -41,13 +39,13 @@ class OperationInGroup(BaseSchema):
 class GroupedOperationResponse(BaseSchema):
     grouped_operations: dict[str, list[OperationInGroup]]
     operation: str
-    month: int
-    year: int
+    month: int | None = None
+    year: int | None = None
     current_month: int | None = datetime.now().month
     current_year: int | None = datetime.now().year
     cats_sum: dict[str, float | None] | None = None
     total: float | None = 0
-    months_year: dict[str, list[int]] | None = None
+    months_year: dict[str | None, list[int | None] | None] | None = None
 
 
 class CreateCategoryRequest(BaseSchema):
