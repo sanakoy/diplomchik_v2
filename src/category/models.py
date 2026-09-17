@@ -8,7 +8,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 if TYPE_CHECKING:
     from src.auth.models import User
     from src.operation.models import Operation
-    from src.plan.models import Plan
 
 
 class Category(Base):
@@ -18,14 +17,10 @@ class Category(Base):
     is_profit: Mapped[bool] = mapped_column()
     image_url: Mapped[str] = mapped_column(nullable=True)
     cat_sum: Mapped[Decimal] = mapped_column(nullable=True, default=0)
-    plan_id: Mapped[int] = mapped_column(
-        ForeignKey("plan.id", ondelete="CASCADE"), nullable=True
-    )
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"))
     date_create: Mapped[datetime] = mapped_column(nullable=True)
     date_upd_cat_sum: Mapped[datetime] = mapped_column(nullable=True)
 
-    plan: Mapped["Plan"] = relationship(back_populates="category", lazy="raise")
     user: Mapped["User"] = relationship(back_populates="category", lazy="raise")
     operation: Mapped[list["Operation"]] = relationship(
         back_populates="category", lazy="raise"

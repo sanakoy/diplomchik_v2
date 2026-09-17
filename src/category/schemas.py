@@ -11,10 +11,7 @@ class CategoryView(BaseSchema):
     cat_sum: float | None = None
     is_profit: bool
     image_url: str | None = None
-    plan_id: int | None = None
     user_id: int
-    percent: float | None = None
-    plan_sum: float | None = None
 
 
 class CategoriesPage(BaseSchema):

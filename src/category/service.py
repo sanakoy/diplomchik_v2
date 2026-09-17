@@ -44,16 +44,6 @@ class CategoryService(BaseService):
         )
         rows = (await self.session.execute(query)).all()
 
-        # Запрос 2 — подгружаем планы отдельно через selectinload
-        cat_ids = [cat_obj.id for cat_obj, _ in rows]
-        plans_query = (
-            select(Category)
-            .options(joinedload(Category.plan))
-            .filter(Category.id.in_(cat_ids))
-        )
-        cats_with_plans = (await self.session.execute(plans_query)).scalars().all()
-        plans_map = {cat.id: cat.plan for cat in cats_with_plans}
-
         serialized_cats = []
         cats_sum_dict = {}
         total = 0.0
@@ -62,7 +52,6 @@ class CategoryService(BaseService):
             sum_val = float(cat_sum) if cat_sum else 0.0
             cats_sum_dict[cat_obj.name] = sum_val
             total += sum_val
-            plan = plans_map.get(cat_obj.id)
 
             serialized_cats.append(
                 CategoryView(
@@ -71,10 +60,7 @@ class CategoryService(BaseService):
                     cat_sum=sum_val,
                     is_profit=cat_obj.is_profit,
                     image_url=cat_obj.image_url,
-                    plan_id=cat_obj.plan_id,
                     user_id=cat_obj.user_id,
-                    percent=float(plan.percent or 0) if plan else None,
-                    plan_sum=float(plan.plan_sum) if plan else None,
                 )
             )
 
