@@ -20,6 +20,9 @@ class Settings(BaseSettings):
 
     SERVICE_URL: str
 
+    # В .env.local задаётся JSON-списком: CORS_ORIGINS='["http://localhost:5173"]'
+    CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
+
     model_config = SettingsConfigDict(
         env_file=ENV_PATH,
         env_file_encoding="utf-8",

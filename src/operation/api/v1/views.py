@@ -1,13 +1,28 @@
-from fastapi import APIRouter, Depends
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Query
 
 from src.auth.authorization import get_current_user_by_access_token
 from src.auth.schemas import UserToken
-from src.operation.schemas import CreateOperationRequest, UpdateOperationRequest
+from src.operation.schemas import (
+    CreateOperationRequest,
+    OperationListParams,
+    OperationsPage,
+    UpdateOperationRequest,
+)
 from src.operation.service import OperationService, get_operation_service
-from src.operation.service import OperationService
 
 
 operation = APIRouter()
+
+
+@operation.get("", summary="Список операций с фильтрами")
+async def get_operations(
+    params: Annotated[OperationListParams, Query()],
+    service: OperationService = Depends(get_operation_service),
+    auth_user: UserToken = Depends(get_current_user_by_access_token),
+) -> OperationsPage:
+    return await service.get_operations(auth_user, params)
 
 
 @operation.post("/create")
