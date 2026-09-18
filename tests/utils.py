@@ -17,8 +17,8 @@ from src.settings import settings, test_settings
 if test_settings.get_db_test_url == settings.get_db_url:
     raise RuntimeError("TEST_DB_* в .env.local указывает на основную БД")
 
-test_engine = create_async_engine(test_settings.get_db_test_url)
-test_session_maker = async_sessionmaker(test_engine, expire_on_commit=False)
+TEST_ENGINE = create_async_engine(test_settings.get_db_test_url)
+TEST_SESSION_MAKER = async_sessionmaker(TEST_ENGINE, expire_on_commit=False)
 
 
 def run_alembic(
@@ -39,7 +39,7 @@ async def reset_schema(connection: AsyncConnection) -> None:
 
 
 async def add_obj(obj):
-    async with test_session_maker() as session:
+    async with TEST_SESSION_MAKER() as session:
         session.add(obj)
         await session.commit()
         await session.refresh(obj)
@@ -48,7 +48,7 @@ async def add_obj(obj):
 
 async def get_obj(model, obj_id: int):
     # Отдельная сессия на каждый вызов, чтобы не получить закэшированный объект
-    async with test_session_maker() as session:
+    async with TEST_SESSION_MAKER() as session:
         return await session.get(model, obj_id)
 
 

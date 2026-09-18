@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from pydantic import Field, model_validator
+from pydantic import ConfigDict, Field, model_validator
 from src.schemas import BaseSchema
 from datetime import datetime
 
@@ -58,5 +58,9 @@ class CreateCategoryRequest(BaseSchema):
 
 
 class UpdateCategoryRequest(BaseSchema):
+    # Владельца и тип категории менять нельзя, поэтому user_id и operation здесь нет.
+    # extra="forbid": лишние поля вернут 422, а не будут молча проигнорированы
+    model_config = ConfigDict(from_attributes=True, extra="forbid")
+
     name: str | None = None
     image_url: str | None = None

@@ -1,5 +1,5 @@
 from decimal import Decimal
-from fastapi import Depends
+from fastapi import Depends, HTTPException
 from sqlalchemy import extract, select
 from sqlalchemy.orm import contains_eager
 from src.auth.schemas import UserToken
@@ -58,7 +58,36 @@ class OperationService(BaseService):
             ],
         )
 
-    async def create_operation(self, create_data: CreateOperationRequest):
+    async def check_own_operation(
+        self, operation_id: int, auth_user: UserToken
+    ) -> None:
+        """Бросает 404, если операции нет или она принадлежит другому пользователю.
+
+        Чужая операция и несуществующая дают одинаковый ответ: иначе по коду ответа
+        можно перебором узнать, какие id заняты.
+        """
+        query = (
+            select(Operation.id)
+            .join(Category, Operation.category_id == Category.id)
+            .filter(Operation.id == operation_id, Category.user_id == auth_user.id)
+        )
+        if (await self.session.execute(query)).scalar_one_or_none() is None:
+            raise HTTPException(status_code=404, detail="Операция не найдена")
+
+    async def check_own_category(self, category_id: int, auth_user: UserToken) -> None:
+        """Бросает 404, если категории нет или она принадлежит другому пользователю."""
+        query = select(Category.id).filter(
+            Category.id == category_id,
+            Category.user_id == auth_user.id,
+        )
+        if (await self.session.execute(query)).scalar_one_or_none() is None:
+            raise HTTPException(status_code=404, detail="Категория не найдена")
+
+    async def create_operation(
+        self, create_data: CreateOperationRequest, auth_user: UserToken
+    ):
+        await self.check_own_category(create_data.category_id, auth_user)
+
         create_data_dict: dict = create_data.model_dump(exclude_unset=True)
         new_operation_obj: Operation = await self.create_obj(create_data_dict)
 
@@ -73,20 +102,25 @@ class OperationService(BaseService):
         self,
         operation_id: int,
         update_data: UpdateOperationRequest,
+        auth_user: UserToken,
     ):
+        await self.check_own_operation(operation_id, auth_user)
+
         update_data_dict: dict = update_data.model_dump(exclude_unset=True)
         updated_operation_obj: Operation = await self.update_obj(
             operation_id, update_data_dict
         )
 
-        if update_data.category_id or update_data.sum:
+        if update_data.sum is not None:
             await update_cat_sum(
                 session=self.session,
                 category_id=updated_operation_obj.category_id,
                 sum_diff=Decimal(updated_operation_obj.sum),
             )
 
-    async def delete_operation(self, operation_id: int):
+    async def delete_operation(self, operation_id: int, auth_user: UserToken):
+        await self.check_own_operation(operation_id, auth_user)
+
         deleted_operation_obj: Operation = await self.delete_obj(operation_id)
 
         await update_cat_sum(

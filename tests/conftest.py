@@ -16,33 +16,33 @@ from tests.utils import (
     current_month_date,
     reset_schema,
     run_alembic,
-    test_engine,
-    test_session_maker,
+    TEST_ENGINE,
+    TEST_SESSION_MAKER,
 )
 
 
 @pytest.fixture(scope="session")
 async def prepare_database():
     # Схема строится миграциями, а не create_all: тесты проверяют ту же БД, что будет на проде
-    async with test_engine.begin() as conn:
+    async with TEST_ENGINE.begin() as conn:
         await reset_schema(conn)
         await conn.run_sync(run_alembic, command.upgrade, "head")
     yield
     # Схему не удаляем: после прогона в БД можно посмотреть данные упавшего теста,
     # чистоту гарантирует reset_schema перед следующим прогоном
-    await test_engine.dispose()
+    await TEST_ENGINE.dispose()
 
 
 @pytest.fixture(autouse=True)
 async def clean_tables(prepare_database):
-    async with test_engine.begin() as conn:
+    async with TEST_ENGINE.begin() as conn:
         await conn.execute(
             text('TRUNCATE operation, category, "user" RESTART IDENTITY CASCADE')
         )
 
 
 async def override_get_session():
-    async with test_session_maker() as session:
+    async with TEST_SESSION_MAKER() as session:
         yield session
 
 

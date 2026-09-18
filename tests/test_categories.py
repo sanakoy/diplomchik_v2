@@ -1,8 +1,16 @@
 import pytest
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from src.category.models import Category
 from src.operation.models import Operation
-from tests.utils import auth_headers, current_month_date, get_obj, previous_month_date
+from tests.utils import (
+    auth_headers,
+    current_month_date,
+    get_obj,
+    previous_month_date,
+    TEST_SESSION_MAKER,
+)
 
 
 def day_key(date) -> str:
@@ -306,9 +314,6 @@ async def test_update_category(client, create_user, create_category):
     assert updated.image_url == "/old.png"
 
 
-@pytest.mark.xfail(
-    reason="update_obj возвращает None, а ручка обращается к .id и падает с 500"
-)
 async def test_update_nonexistent_category(client, create_user):
     user = await create_user()
 
@@ -321,7 +326,6 @@ async def test_update_nonexistent_category(client, create_user):
     assert response.status_code == 404
 
 
-@pytest.mark.xfail(reason="Нет проверки, что категория принадлежит пользователю")
 async def test_update_category_of_other_user(client, create_user, create_category):
     user = await create_user()
     other_user = await create_user()
@@ -356,10 +360,6 @@ async def test_delete_category(client, create_user, create_category):
     assert await get_obj(Category, category.id) is None
 
 
-@pytest.mark.xfail(
-    reason="У Category.operation нет cascade/passive_deletes: ORM пытается обнулить "
-    "operation.category_id и падает на NOT NULL, ответ 500"
-)
 async def test_delete_category_with_operations(
     client, create_user, create_category, create_operation
 ):
@@ -376,9 +376,6 @@ async def test_delete_category_with_operations(
     assert await get_obj(Operation, operation.id) is None
 
 
-@pytest.mark.xfail(
-    reason="delete_obj возвращает False, а ручка обращается к .id и падает с 500"
-)
 async def test_delete_nonexistent_category(client, create_user):
     user = await create_user()
 
@@ -389,7 +386,6 @@ async def test_delete_nonexistent_category(client, create_user):
     assert response.status_code == 404
 
 
-@pytest.mark.xfail(reason="Нет проверки, что категория принадлежит пользователю")
 async def test_delete_category_of_other_user(client, create_user, create_category):
     user = await create_user()
     other_user = await create_user()
@@ -401,3 +397,47 @@ async def test_delete_category_of_other_user(client, create_user, create_categor
 
     assert response.status_code == 404
     assert await get_obj(Category, other_category.id) is not None
+
+
+async def test_delete_category_with_loaded_operations(
+    create_user, create_category, create_operation
+):
+    # passive_deletes не спасает, если операции уже в сессии: без cascade="all, delete"
+    # ORM попытается выставить им category_id = NULL и упадёт на NOT NULL
+    user = await create_user()
+    category = await create_category(user)
+    operation = await create_operation(category)
+
+    async with TEST_SESSION_MAKER() as session:
+        loaded_category = (
+            await session.execute(
+                select(Category)
+                .options(selectinload(Category.operation))
+                .where(Category.id == category.id)
+            )
+        ).scalar_one()
+        assert len(loaded_category.operation) == 1
+
+        await session.delete(loaded_category)
+        await session.commit()
+
+    assert await get_obj(Category, category.id) is None
+    assert await get_obj(Operation, operation.id) is None
+
+
+@pytest.mark.parametrize("extra_field", [{"user_id": 2}, {"operation": "profit"}])
+async def test_update_category_rejects_extra_fields(
+    client, create_user, create_category, extra_field
+):
+    # Владельца и тип категории менять нельзя, лишние поля не должны молча игнорироваться
+    user = await create_user()
+    category = await create_category(user, name="Старое")
+
+    response = await client.patch(
+        f"/api/v1/categories/update/{category.id}",
+        json={"name": "Новое"} | extra_field,
+        headers=auth_headers(user),
+    )
+
+    assert response.status_code == 422
+    assert (await get_obj(Category, category.id)).name == "Старое"

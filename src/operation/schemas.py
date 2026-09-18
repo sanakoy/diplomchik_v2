@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import ConfigDict, Field, model_validator
 from src.schemas import BaseSchema
 
 
@@ -13,9 +13,12 @@ class CreateOperationRequest(BaseSchema):
 
 
 class UpdateOperationRequest(BaseSchema):
+    # Категорию операции менять нельзя: вместе с ней сменился бы и владелец операции.
+    # extra="forbid": попытка прислать category_id вернёт 422, а не будет молча проигнорирована
+    model_config = ConfigDict(from_attributes=True, extra="forbid")
+
     sum: float | None = None
     comment: str | None = None
-    category_id: int | None = None
     date: datetime | None = None
 
 

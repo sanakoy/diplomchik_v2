@@ -31,7 +31,7 @@ async def create_operation(
     service: OperationService = Depends(get_operation_service),
     auth_user: UserToken = Depends(get_current_user_by_access_token),
 ):
-    await service.create_operation(data)
+    await service.create_operation(data, auth_user)
     return {"message": "Операция успешно создана"}
 
 
@@ -42,7 +42,7 @@ async def update_operation(
     service: OperationService = Depends(get_operation_service),
     auth_user: UserToken = Depends(get_current_user_by_access_token),
 ):
-    await service.update_operation(operation_id, data)
+    await service.update_operation(operation_id, data, auth_user)
     return {"message": "Операция успешно обновлена"}
 
 
@@ -52,5 +52,5 @@ async def delete_operation(
     service: OperationService = Depends(get_operation_service),
     auth_user: UserToken = Depends(get_current_user_by_access_token),
 ):
-    deleted_operation_obj = await service.delete_operation(operation_id)
+    deleted_operation_obj = await service.delete_operation(operation_id, auth_user)
     return {"message": ("Операция успешно удалена")}

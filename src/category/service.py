@@ -1,5 +1,5 @@
 from datetime import datetime
-from fastapi import Depends
+from fastapi import Depends, HTTPException
 from sqlalchemy import and_, extract, func, select, text
 from sqlalchemy.orm import joinedload
 from src.auth.schemas import UserToken
@@ -23,17 +23,14 @@ class CategoryService(BaseService):
 
     async def get_categories(self, auth_user: UserToken, is_profit: bool):
         query = (
-            select(
-                Category,
-                func.sum(Operation.sum).label("cat_sum")
-            )
+            select(Category, func.sum(Operation.sum).label("cat_sum"))
             .outerjoin(
                 Operation,
                 and_(
                     Operation.category_id == Category.id,
                     extract("year", Operation.date) == datetime.now().year,
                     extract("month", Operation.date) == datetime.now().month,
-                )
+                ),
             )
             .filter(
                 Category.user_id == auth_user.id,
@@ -71,12 +68,11 @@ class CategoryService(BaseService):
             cats_sum=cats_sum_dict,
         )
 
-
     async def get_statistic(
         self, auth_user: UserToken, operation: str, year: int, month: int
     ):
         is_profit = operation == "profit"
-        
+
         # 1. Запрос к операциям (тянет операции + категории одним запросом)
         operations_query = self.get_operations_query(
             user_id=auth_user.id, is_profit=is_profit, year=year, month=month
@@ -92,10 +88,10 @@ class CategoryService(BaseService):
         for op in operations:
             # Кроссплатформенный формат "18 May" (без ведущих нулей, работает и на Linux, и на Windows)
             day_key = f"{op.date.day} {op.date.strftime('%B')}"
-            
+
             op_sum = float(op.sum) if op.sum else 0.0
             total += op_sum
-            
+
             # Считаем сумму по категориям
             cat_name = op.category.name
             cats_sum_dict[cat_name] = cats_sum_dict.get(cat_name, 0.0) + op_sum
@@ -180,9 +176,24 @@ class CategoryService(BaseService):
 
         return new_category_obj
 
+    async def check_own_category(self, category_id: int, auth_user: UserToken) -> None:
+        """Бросает 404, если категории нет или она принадлежит другому пользователю.
+
+        Чужая категория и несуществующая дают одинаковый ответ: иначе по коду ответа
+        можно перебором узнать, какие id заняты.
+        """
+        query = select(Category.id).filter(
+            Category.id == category_id,
+            Category.user_id == auth_user.id,
+        )
+        if (await self.session.execute(query)).scalar_one_or_none() is None:
+            raise HTTPException(status_code=404, detail="Категория не найдена")
+
     async def update_category(
-        self, category_id: int, update_data: UpdateCategoryRequest
+        self, category_id: int, update_data: UpdateCategoryRequest, auth_user: UserToken
     ):
+        await self.check_own_category(category_id, auth_user)
+
         update_data_dict: dict = update_data.model_dump(exclude_unset=True)
         updated_category_obj: Category = await self.update_obj(
             category_id, update_data_dict
@@ -190,7 +201,9 @@ class CategoryService(BaseService):
 
         return updated_category_obj
 
-    async def delete_category(self, category_id: int):
+    async def delete_category(self, category_id: int, auth_user: UserToken):
+        await self.check_own_category(category_id, auth_user)
+
         deleted_category_obj: Category = await self.delete_obj(category_id)
         return deleted_category_obj
 

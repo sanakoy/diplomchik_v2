@@ -22,9 +22,8 @@ async def get_current_user_by_access_token(
     payload: dict = Depends(get_current_token_payload),
 ) -> UserToken:
     validate_token_type(payload, "access")
-    user_obj = await get_user_by_id(user_id=payload.get("sub"), session=session)
 
-    return UserToken.model_validate(user_obj)
+    return await get_auth_user(payload=payload, session=session)
 
 
 async def get_current_auth_user_by_refresh_token(
@@ -32,17 +31,31 @@ async def get_current_auth_user_by_refresh_token(
     payload: dict = Depends(get_current_token_payload),
 ) -> UserToken:
     validate_token_type(payload, "refresh")
+
+    return await get_auth_user(payload=payload, session=session)
+
+
+async def get_auth_user(payload: dict, session: AsyncSession) -> UserToken:
     user_obj = await get_user_by_id(user_id=payload.get("sub"), session=session)
+    if user_obj is None:
+        # Токен подписан верно, но пользователя уже нет: например, его удалили
+        raise HTTPException(status_code=401, detail="Пользователь не найден")
 
     return UserToken.model_validate(user_obj)
 
 
 async def get_user_by_id(
-    user_id: int,
+    user_id: str | int | None,
     session: AsyncSession = Depends(get_session),
 ) -> User | None:
+    try:
+        user_id = int(user_id)
+    except (TypeError, ValueError):
+        # sub в токене отсутствует или не число
+        return None
+
     user_obj = (
-        await session.execute(select(User).where(User.id == int(user_id)))
+        await session.execute(select(User).where(User.id == user_id))
     ).scalar_one_or_none()
     return user_obj
 

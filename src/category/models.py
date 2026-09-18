@@ -23,7 +23,11 @@ class Category(Base):
 
     user: Mapped["User"] = relationship(back_populates="category", lazy="raise")
     operation: Mapped[list["Operation"]] = relationship(
-        back_populates="category", lazy="raise"
+        back_populates="category",
+        lazy="raise",
+        # Операции удаляет сама БД по ON DELETE CASCADE, ORM их даже не загружает
+        cascade="all, delete",
+        passive_deletes=True,
     )
 
     def __str__(self):

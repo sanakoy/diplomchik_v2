@@ -206,9 +206,6 @@ async def test_create_operation_validation(client, create_user, json):
     assert response.status_code == 422
 
 
-@pytest.mark.xfail(
-    reason="Нет проверки существования категории: IntegrityError по внешнему ключу, 500"
-)
 async def test_create_operation_in_nonexistent_category(client, create_user):
     user = await create_user()
 
@@ -221,7 +218,6 @@ async def test_create_operation_in_nonexistent_category(client, create_user):
     assert response.status_code == 404
 
 
-@pytest.mark.xfail(reason="Нет проверки, что категория принадлежит пользователю")
 async def test_create_operation_in_category_of_other_user(
     client, create_user, create_category
 ):
@@ -285,22 +281,14 @@ async def test_update_operation_date(
     )
 
 
-@pytest.mark.xfail(
-    reason="При переносе операции cat_sum пересчитывается только у новой категории, "
-    "у старой остаётся прежняя сумма"
-)
-async def test_update_operation_move_to_other_category(
+async def test_update_operation_cannot_change_category(
     client, create_user, create_category, create_operation
 ):
+    # Смена категории сменила бы и владельца операции, поэтому category_id запрещён
     user = await create_user()
     old_category = await create_category(user, name="Старая")
     new_category = await create_category(user, name="Новая")
     operation = await create_operation(old_category, sum=100)
-    await client.patch(  # выравниваем cat_sum старой категории через API
-        f"/api/v1/operations/update/{operation.id}",
-        json={"sum": 100},
-        headers=auth_headers(user),
-    )
 
     response = await client.patch(
         f"/api/v1/operations/update/{operation.id}",
@@ -308,16 +296,10 @@ async def test_update_operation_move_to_other_category(
         headers=auth_headers(user),
     )
 
-    assert response.status_code == 200
-    assert (await get_obj(Operation, operation.id)).category_id == new_category.id
-    assert (await get_obj(Category, new_category.id)).cat_sum == 100
-    assert (await get_obj(Category, old_category.id)).cat_sum == 0
+    assert response.status_code == 422
+    assert (await get_obj(Operation, operation.id)).category_id == old_category.id
 
 
-@pytest.mark.xfail(
-    reason="Условие `if update_data.category_id or update_data.sum` ложно при sum=0, "
-    "cat_sum не пересчитывается"
-)
 async def test_update_operation_sum_to_zero(
     client, create_user, create_category, create_operation
 ):
@@ -340,9 +322,6 @@ async def test_update_operation_sum_to_zero(
     assert (await get_obj(Category, category.id)).cat_sum == 0
 
 
-@pytest.mark.xfail(
-    reason="update_obj возвращает None, а сервис обращается к .category_id и падает с 500"
-)
 async def test_update_nonexistent_operation(client, create_user):
     user = await create_user()
 
@@ -353,7 +332,6 @@ async def test_update_nonexistent_operation(client, create_user):
     assert response.status_code == 404
 
 
-@pytest.mark.xfail(reason="Нет проверки, что операция принадлежит пользователю")
 async def test_update_operation_of_other_user(
     client, create_user, create_category, create_operation
 ):
@@ -391,9 +369,6 @@ async def test_delete_operation(client, create_user, create_category, create_ope
     assert (await get_obj(Category, category.id)).cat_sum == 50
 
 
-@pytest.mark.xfail(
-    reason="delete_obj возвращает False, а сервис обращается к .category_id и падает с 500"
-)
 async def test_delete_nonexistent_operation(client, create_user):
     user = await create_user()
 
@@ -404,7 +379,6 @@ async def test_delete_nonexistent_operation(client, create_user):
     assert response.status_code == 404
 
 
-@pytest.mark.xfail(reason="Нет проверки, что операция принадлежит пользователю")
 async def test_delete_operation_of_other_user(
     client, create_user, create_category, create_operation
 ):

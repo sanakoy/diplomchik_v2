@@ -1,6 +1,13 @@
+from datetime import timedelta
+
 import pytest
 
-from src.auth.jwt_utils import create_access_token, create_refresh_token, jwt_decode
+from src.auth.jwt_utils import (
+    create_access_token,
+    create_refresh_token,
+    jwt_decode,
+    jwt_encode,
+)
 from tests.utils import auth_headers
 
 PROTECTED_ENDPOINTS = [
@@ -65,13 +72,23 @@ async def test_valid_token(client, create_user):
     assert response.status_code == 200
 
 
-@pytest.mark.xfail(
-    reason="get_current_user_by_access_token не проверяет, что пользователь найден: "
-    "UserToken.model_validate(None) падает с 500"
-)
 async def test_token_of_nonexistent_user(client):
     headers = {"Authorization": f"Bearer {create_access_token('999')}"}
 
     response = await client.get("/api/v1/operations", headers=headers)
+
+    assert response.status_code == 401
+
+
+@pytest.mark.parametrize("sub", [None, "не число"])
+async def test_token_with_broken_sub(client, sub):
+    payload = {"sub": sub} if sub is not None else {}
+    token = jwt_encode(
+        payload=payload, token_type="access", time_delta=timedelta(minutes=5)
+    )
+
+    response = await client.get(
+        "/api/v1/operations", headers={"Authorization": f"Bearer {token}"}
+    )
 
     assert response.status_code == 401
