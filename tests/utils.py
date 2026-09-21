@@ -53,7 +53,7 @@ async def get_obj(model, obj_id: int):
 
 
 def auth_headers(user: User) -> dict:
-    return {"Authorization": f"Bearer {create_access_token(str(user.id))}"}
+    return {"Authorization": f"Bearer {create_access_token(user.id)}"}
 
 
 def current_month_date(day: int = 10) -> datetime:

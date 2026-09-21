@@ -314,16 +314,26 @@ async def test_update_category(client, create_user, create_category):
     assert updated.image_url == "/old.png"
 
 
-async def test_update_nonexistent_category(client, create_user):
+async def test_update_nonexistent_category(client, create_user, create_category):
+    # У пользователя есть своя категория: 404 должен быть именно из-за чужого id
     user = await create_user()
+    category = await create_category(user, name="Своя")
 
     response = await client.patch(
-        "/api/v1/categories/update/999",
+        f"/api/v1/categories/update/{category.id + 1}",
         json={"name": "Новое"},
         headers=auth_headers(user),
     )
 
     assert response.status_code == 404
+    assert (await get_obj(Category, category.id)).name == "Своя"
+    # Контроль: тот же запрос к своей категории проходит
+    own_response = await client.patch(
+        f"/api/v1/categories/update/{category.id}",
+        json={"name": "Новое"},
+        headers=auth_headers(user),
+    )
+    assert own_response.status_code == 200
 
 
 async def test_update_category_of_other_user(client, create_user, create_category):
@@ -376,14 +386,22 @@ async def test_delete_category_with_operations(
     assert await get_obj(Operation, operation.id) is None
 
 
-async def test_delete_nonexistent_category(client, create_user):
+async def test_delete_nonexistent_category(client, create_user, create_category):
+    # У пользователя есть своя категория: 404 должен быть именно из-за чужого id
     user = await create_user()
+    category = await create_category(user)
 
     response = await client.delete(
-        "/api/v1/categories/delete/999", headers=auth_headers(user)
+        f"/api/v1/categories/delete/{category.id + 1}", headers=auth_headers(user)
     )
 
     assert response.status_code == 404
+    assert await get_obj(Category, category.id) is not None
+    # Контроль: тот же запрос к своей категории проходит
+    own_response = await client.delete(
+        f"/api/v1/categories/delete/{category.id}", headers=auth_headers(user)
+    )
+    assert own_response.status_code == 200
 
 
 async def test_delete_category_of_other_user(client, create_user, create_category):

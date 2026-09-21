@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
     REFRESH_TOKEN_EXPIRE_DAYS: int
+    # Secure-cookie браузер шлёт только по HTTPS (для localhost делает исключение).
+    # False нужен, только если фронт открывают по http с другого хоста
+    REFRESH_COOKIE_SECURE: bool = True
 
     SERVICE_URL: str
 

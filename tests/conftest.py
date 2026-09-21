@@ -7,6 +7,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 
 from src.auth.models import User
+from src.auth.password_hashing import get_hashed_password
 from src.category.models import Category
 from src.database import get_session
 from src.main import app
@@ -37,7 +38,10 @@ async def prepare_database():
 async def clean_tables(prepare_database):
     async with TEST_ENGINE.begin() as conn:
         await conn.execute(
-            text('TRUNCATE operation, category, "user" RESTART IDENTITY CASCADE')
+            text(
+                'TRUNCATE operation, category, refresh_token, "user" '
+                "RESTART IDENTITY CASCADE"
+            )
         )
 
 
@@ -52,7 +56,8 @@ async def client():
     try:
         # raise_app_exceptions=False: необработанная ошибка приходит как 500, как у живого сервера
         transport = ASGITransport(app=app, raise_app_exceptions=False)
-        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        # https: httpx, как и браузер, не отправляет Secure-cookie по http
+        async with AsyncClient(transport=transport, base_url="https://test") as ac:
             yield ac
     finally:
         # Снимаем только свою подмену: другие тесты могут подменять свои зависимости
@@ -67,11 +72,15 @@ operation_counter = count(1)
 
 @pytest.fixture
 def create_user():
-    async def _create_user(username: str | None = None) -> User:
+    async def _create_user(
+        email: str | None = None, password: str | None = None
+    ) -> User:
         return await add_obj(
             User(
-                username=username or f"user_{next(user_counter)}",
-                hashed_password="hash",
+                email=email or f"user_{next(user_counter)}@example.com",
+                # bcrypt медленный, поэтому настоящий хеш считаем, только когда
+                # тесту нужен вход по паролю
+                hashed_password=get_hashed_password(password) if password else "hash",
             )
         )
 

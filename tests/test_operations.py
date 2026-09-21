@@ -206,16 +206,35 @@ async def test_create_operation_validation(client, create_user, json):
     assert response.status_code == 422
 
 
-async def test_create_operation_in_nonexistent_category(client, create_user):
+async def test_create_operation_in_nonexistent_category(
+    client, create_user, create_category
+):
+    # У пользователя есть своя категория: 404 должен быть именно из-за чужого id
     user = await create_user()
+    category = await create_category(user)
 
     response = await client.post(
         "/api/v1/operations/create",
-        json={"sum": 100, "category_id": 999, "date": "2026-09-17T15:30:00"},
+        json={
+            "sum": 100,
+            "category_id": category.id + 1,
+            "date": "2026-09-17T15:30:00",
+        },
         headers=auth_headers(user),
     )
 
     assert response.status_code == 404
+    # Операция не создалась, в том числе в своей категории
+    list_response = await client.get("/api/v1/operations", headers=auth_headers(user))
+    assert list_response.json() == {"data": []}
+    assert (await get_obj(Category, category.id)).cat_sum == 0
+    # Контроль: тот же запрос в свою категорию проходит
+    own_response = await client.post(
+        "/api/v1/operations/create",
+        json={"sum": 100, "category_id": category.id, "date": "2026-09-17T15:30:00"},
+        headers=auth_headers(user),
+    )
+    assert own_response.status_code == 200
 
 
 async def test_create_operation_in_category_of_other_user(
@@ -322,14 +341,28 @@ async def test_update_operation_sum_to_zero(
     assert (await get_obj(Category, category.id)).cat_sum == 0
 
 
-async def test_update_nonexistent_operation(client, create_user):
+async def test_update_nonexistent_operation(
+    client, create_user, create_category, create_operation
+):
+    # У пользователя есть своя операция: 404 должен быть именно из-за чужого id
     user = await create_user()
+    operation = await create_operation(await create_category(user), sum=100)
 
     response = await client.patch(
-        "/api/v1/operations/update/999", json={"sum": 1}, headers=auth_headers(user)
+        f"/api/v1/operations/update/{operation.id + 1}",
+        json={"sum": 1},
+        headers=auth_headers(user),
     )
 
     assert response.status_code == 404
+    assert (await get_obj(Operation, operation.id)).sum == 100
+    # Контроль: тот же запрос к своей операции проходит
+    own_response = await client.patch(
+        f"/api/v1/operations/update/{operation.id}",
+        json={"sum": 1},
+        headers=auth_headers(user),
+    )
+    assert own_response.status_code == 200
 
 
 async def test_update_operation_of_other_user(
@@ -369,14 +402,24 @@ async def test_delete_operation(client, create_user, create_category, create_ope
     assert (await get_obj(Category, category.id)).cat_sum == 50
 
 
-async def test_delete_nonexistent_operation(client, create_user):
+async def test_delete_nonexistent_operation(
+    client, create_user, create_category, create_operation
+):
+    # У пользователя есть своя операция: 404 должен быть именно из-за чужого id
     user = await create_user()
+    operation = await create_operation(await create_category(user))
 
     response = await client.delete(
-        "/api/v1/operations/delete/999", headers=auth_headers(user)
+        f"/api/v1/operations/delete/{operation.id + 1}", headers=auth_headers(user)
     )
 
     assert response.status_code == 404
+    assert await get_obj(Operation, operation.id) is not None
+    # Контроль: тот же запрос к своей операции проходит
+    own_response = await client.delete(
+        f"/api/v1/operations/delete/{operation.id}", headers=auth_headers(user)
+    )
+    assert own_response.status_code == 200
 
 
 async def test_delete_operation_of_other_user(
