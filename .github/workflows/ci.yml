@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+# Токен GITHUB_TOKEN может только читать код: писать в репозиторий, PR и релизы
+# проверкам не нужно
+permissions:
+  contents: read
+
+# Новый push в ту же ветку отменяет ещё не законченный прогон предыдущего
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Линтер и форматирование
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # Не оставлять токен GitHub в конфиге git: следующим шагам (и зависимостям,
+          # которые ставит pip) доступ на запись в репозиторий не нужен
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      # Версии ruff и black берутся из requirements.txt, как и локально
+      - run: pip install -r requirements.txt
+
+      - name: ruff
+        run: ruff check src tests
+
+      - name: black
+        run: black --check src tests
+
+  test:
+    name: Тесты
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        # Тесты стартуют только после того, как Postgres начнёт принимать подключения
+        options: >-
+          --health-cmd "pg_isready -U user"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    # .env.local в репозитории нет: settings читает эти же переменные из окружения
+    env:
+      # Основная БД тестами не используется, но settings требует её параметры.
+      # Имя должно отличаться от тестовой, иначе tests/utils.py откажется запускаться
+      DB_USER: user
+      DB_PASSWORD: password
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: app_db
+      TEST_DB_USER: user
+      TEST_DB_PASSWORD: password
+      TEST_DB_HOST: localhost
+      TEST_DB_PORT: 5432
+      TEST_DB_NAME: test_db
+      # Ключ только для подписи токенов в тестах, это не секрет продакшена
+      SECRET_TOKEN_KEY: ci-only-not-a-real-secret
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 15
+      REFRESH_TOKEN_EXPIRE_DAYS: 30
+      SERVICE_URL: http://localhost:8001
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # Не оставлять токен GitHub в конфиге git: следующим шагам (и зависимостям,
+          # которые ставит pip) доступ на запись в репозиторий не нужен
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - run: pip install -r requirements.txt
+
+      - name: pytest
+        run: pytest
