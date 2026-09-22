@@ -40,12 +40,12 @@ class AuthService(BaseService):
         self.session.add(user)
         try:
             await self.session.commit()
-        except IntegrityError:
+        except IntegrityError as err:
             # Уникальный индекс по email: сработает и при гонке двух одновременных регистраций
             await self.session.rollback()
             raise HTTPException(
                 status_code=409, detail="Пользователь с таким email уже существует"
-            )
+            ) from err
         await self.session.refresh(user)
         return user
 

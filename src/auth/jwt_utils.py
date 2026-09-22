@@ -39,5 +39,5 @@ def jwt_decode(token: str) -> AccessTokenPayload:
             token, settings.SECRET_TOKEN_KEY, algorithms=[settings.ALGORITHM]
         )
         return AccessTokenPayload.model_validate(payload)
-    except (InvalidTokenError, ValidationError):
-        raise HTTPException(status_code=401, detail="Недействительный токен")
+    except (InvalidTokenError, ValidationError) as err:
+        raise HTTPException(status_code=401, detail="Недействительный токен") from err

@@ -1,9 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.settings import settings
-from src.operation.api.v1.views import operation
-from src.category.api.v1.views import category
+
 from src.auth.api.v1.views import auth
+from src.category.api.v1.views import category
+from src.operation.api.v1.views import operation
+from src.settings import settings
 
 app = FastAPI()
 

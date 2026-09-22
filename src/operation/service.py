@@ -1,10 +1,14 @@
 from decimal import Decimal
+
 from fastapi import Depends, HTTPException
 from sqlalchemy import extract, select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import contains_eager
+
 from src.auth.schemas import UserToken
 from src.category.models import Category
 from src.category.utils import update_cat_sum
+from src.database import get_session
 from src.operation.models import Operation
 from src.operation.schemas import (
     CreateOperationRequest,
@@ -14,8 +18,6 @@ from src.operation.schemas import (
     UpdateOperationRequest,
 )
 from src.service import BaseService
-from src.database import get_session
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class OperationService(BaseService):

@@ -12,7 +12,6 @@ from src.operation.schemas import (
 )
 from src.operation.service import OperationService, get_operation_service
 
-
 operation = APIRouter()
 
 
@@ -52,5 +51,5 @@ async def delete_operation(
     service: OperationService = Depends(get_operation_service),
     auth_user: UserToken = Depends(get_current_user_by_access_token),
 ):
-    deleted_operation_obj = await service.delete_operation(operation_id, auth_user)
-    return {"message": ("Операция успешно удалена")}
+    await service.delete_operation(operation_id, auth_user)
+    return {"message": "Операция успешно удалена"}

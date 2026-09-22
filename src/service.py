@@ -1,10 +1,11 @@
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.utils import (
     delete_obj_by_id,
     get_obj_by_id,
     get_objs,
     update_obj_by_id,
 )
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class BaseService:

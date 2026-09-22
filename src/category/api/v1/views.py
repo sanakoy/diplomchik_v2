@@ -11,7 +11,6 @@ from src.category.schemas import (
 )
 from src.category.service import CategoryService, get_category_service
 
-
 category = APIRouter()
 
 

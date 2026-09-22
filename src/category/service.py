@@ -1,8 +1,12 @@
 from datetime import datetime
+
 from fastapi import Depends, HTTPException
 from sqlalchemy import and_, extract, func, select, text
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
+
 from src.auth.schemas import UserToken
+from src.category.models import Category
 from src.category.schemas import (
     CategoriesPage,
     CategoryView,
@@ -12,10 +16,8 @@ from src.category.schemas import (
     UpdateCategoryRequest,
 )
 from src.database import get_session
-from src.category.models import Category
 from src.operation.models import Operation
 from src.service import BaseService
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class CategoryService(BaseService):

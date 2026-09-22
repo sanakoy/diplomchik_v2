@@ -1,8 +1,8 @@
-from decimal import Decimal
+from datetime import datetime
 
 from pydantic import ConfigDict, Field, model_validator
+
 from src.schemas import BaseSchema
-from datetime import datetime
 
 
 class CategoryView(BaseSchema):

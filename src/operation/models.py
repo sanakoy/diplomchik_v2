@@ -1,7 +1,9 @@
 from datetime import datetime
 from decimal import Decimal
+
+from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, ForeignKey
+
 from src.category.models import Category
 from src.database import Base
 
@@ -21,6 +23,6 @@ class Operation(Base):
     )
 
     def __str__(self):
-        if self.comment == None:
+        if self.comment is None:
             return str(self.sum)
         return str(self.sum) + " " + self.comment

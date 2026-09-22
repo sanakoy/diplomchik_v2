@@ -1,4 +1,4 @@
-from locust import HttpUser, constant, constant_throughput, task
+from locust import HttpUser, constant_throughput, task
 from src.settings import settings
 
 

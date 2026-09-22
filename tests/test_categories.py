@@ -5,11 +5,11 @@ from sqlalchemy.orm import selectinload
 from src.category.models import Category
 from src.operation.models import Operation
 from tests.utils import (
+    TEST_SESSION_MAKER,
     auth_headers,
     current_month_date,
     get_obj,
     previous_month_date,
-    TEST_SESSION_MAKER,
 )
 
 

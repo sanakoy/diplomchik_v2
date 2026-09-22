@@ -13,12 +13,12 @@ from src.database import get_session
 from src.main import app
 from src.operation.models import Operation
 from tests.utils import (
+    TEST_ENGINE,
+    TEST_SESSION_MAKER,
     add_obj,
     current_month_date,
     reset_schema,
     run_alembic,
-    TEST_ENGINE,
-    TEST_SESSION_MAKER,
 )
 
 

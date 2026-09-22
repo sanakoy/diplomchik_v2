@@ -1,9 +1,11 @@
 from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
+
 from sqlalchemy import ForeignKey, String
-from src.database import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from src.database import Base
 
 if TYPE_CHECKING:
     from src.auth.models import User

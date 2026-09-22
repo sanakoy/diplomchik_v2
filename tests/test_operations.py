@@ -6,7 +6,6 @@ from src.category.models import Category
 from src.operation.models import Operation
 from tests.utils import auth_headers, get_obj
 
-
 # ---------- GET /operations ----------
 
 

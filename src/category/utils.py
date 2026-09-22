@@ -1,7 +1,8 @@
 from decimal import Decimal
-from sqlalchemy import select
-from sqlalchemy import func
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.category.models import Category
 from src.operation.models import Operation
 from src.utils import update_obj_by_id

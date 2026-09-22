@@ -1,0 +1,28 @@
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+
+[tool.ruff.lint]
+# Набор правил задан явно: иначе при обновлении ruff в CI сами собой включатся новые
+select = [
+    "E",     # pycodestyle: ошибки стиля
+    "F",     # pyflakes: неиспользуемые импорты и переменные, неопределённые имена
+    "I",     # isort: порядок импортов
+    "UP",    # pyupgrade: синтаксис актуальной версии Python
+    "B",     # flake8-bugbear: частые ошибки и подозрительные конструкции
+    "ASYNC", # блокирующие вызовы внутри async-функций
+]
+ignore = [
+    "E501",  # длину строк контролирует black
+]
+
+[tool.ruff.lint.flake8-bugbear]
+# Depends(), Query(), Cookie() в значениях по умолчанию — штатный способ FastAPI, а не ошибка
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Cookie",
+    "fastapi.Header",
+    "fastapi.Body",
+    "fastapi.Path",
+]
