@@ -9,7 +9,7 @@ services:
      POSTGRES_PASSWORD: 123qwe
      POSTGRES_DB: db_diplomchik_v2
    ports:
-     - "5435:5432"
+     - "127.0.0.1:5435:5432"
    volumes:
      - postgres_data_diplomchik_v2:/var/lib/postgresql/data
    restart: unless-stopped
@@ -21,7 +21,7 @@ services:
      POSTGRES_PASSWORD: 123qwe
      POSTGRES_DB: db_diplomchik_v2_test
    ports:
-     - "5436:5432"
+     - "127.0.0.1:5436:5432"
    volumes:
      - postgres_data_diplomchik_v2_test:/var/lib/postgresql/data
    restart: unless-stopped
