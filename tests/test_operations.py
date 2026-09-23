@@ -2,9 +2,21 @@ from datetime import datetime
 
 import pytest
 
-from src.category.models import Category
 from src.operation.models import Operation
 from tests.utils import auth_headers, get_obj
+
+
+async def get_month_total(
+    client, user, year: int, month: int, operation: str = "spending"
+) -> float:
+    """Сумма за месяц так, как её видит пользователь: считается по операциям."""
+    response = await client.get(
+        "/api/v1/categories/statistic",
+        params={"operation": operation, "year": year, "month": month},
+        headers=auth_headers(user),
+    )
+    return response.json()["total"]
+
 
 # ---------- GET /operations ----------
 
@@ -157,7 +169,7 @@ async def test_get_operations_invalid_params(client, create_user, params):
 async def test_create_operation(client, create_user, create_category, create_operation):
     user = await create_user()
     category = await create_category(user)
-    await create_operation(category, sum=100)
+    await create_operation(category, sum=100, date=datetime(2026, 9, 1))
 
     response = await client.post(
         "/api/v1/operations/create",
@@ -182,8 +194,8 @@ async def test_create_operation(client, create_user, create_category, create_ope
     assert created.comment == "Молоко"
     assert created.date == datetime(2026, 9, 17, 15, 30)
     assert created.category_id == category.id
-    # cat_sum пересчитывается по всем операциям категории
-    assert (await get_obj(Category, category.id)).cat_sum == 350.5
+    # Сумма за месяц учитывает новую операцию
+    assert await get_month_total(client, user, 2026, 9) == 350.5
 
 
 @pytest.mark.parametrize(
@@ -226,7 +238,6 @@ async def test_create_operation_in_nonexistent_category(
     # Операция не создалась, в том числе в своей категории
     list_response = await client.get("/api/v1/operations", headers=auth_headers(user))
     assert list_response.json() == {"data": []}
-    assert (await get_obj(Category, category.id)).cat_sum == 0
     # Контроль: тот же запрос в свою категорию проходит
     own_response = await client.post(
         "/api/v1/operations/create",
@@ -240,7 +251,8 @@ async def test_create_operation_in_category_of_other_user(
     client, create_user, create_category
 ):
     user = await create_user()
-    other_category = await create_category(await create_user())
+    other_user = await create_user()
+    other_category = await create_category(other_user)
 
     response = await client.post(
         "/api/v1/operations/create",
@@ -253,7 +265,11 @@ async def test_create_operation_in_category_of_other_user(
     )
 
     assert response.status_code == 404
-    assert (await get_obj(Category, other_category.id)).cat_sum == 0
+    # У владельца категории операция тоже не появилась
+    other_response = await client.get(
+        "/api/v1/operations", headers=auth_headers(other_user)
+    )
+    assert other_response.json() == {"data": []}
 
 
 # ---------- PATCH /update ----------
@@ -262,8 +278,10 @@ async def test_create_operation_in_category_of_other_user(
 async def test_update_operation(client, create_user, create_category, create_operation):
     user = await create_user()
     category = await create_category(user)
-    operation = await create_operation(category, sum=100, comment="Старый")
-    await create_operation(category, sum=50)
+    operation = await create_operation(
+        category, sum=100, comment="Старый", date=datetime(2026, 9, 1)
+    )
+    await create_operation(category, sum=50, date=datetime(2026, 9, 2))
 
     response = await client.patch(
         f"/api/v1/operations/update/{operation.id}",
@@ -278,7 +296,8 @@ async def test_update_operation(client, create_user, create_category, create_ope
     assert updated.comment == "Новый"
     # Непереданные поля не затираются
     assert updated.date == operation.date
-    assert (await get_obj(Category, category.id)).cat_sum == 350
+    # Сумма за месяц пересчитывается по новым значениям
+    assert await get_month_total(client, user, 2026, 9) == 350
 
 
 async def test_update_operation_date(
@@ -323,12 +342,7 @@ async def test_update_operation_sum_to_zero(
 ):
     user = await create_user()
     category = await create_category(user)
-    operation = await create_operation(category, sum=100)
-    await client.patch(
-        f"/api/v1/operations/update/{operation.id}",
-        json={"sum": 100},
-        headers=auth_headers(user),
-    )
+    operation = await create_operation(category, sum=100, date=datetime(2026, 9, 1))
 
     response = await client.patch(
         f"/api/v1/operations/update/{operation.id}",
@@ -337,7 +351,7 @@ async def test_update_operation_sum_to_zero(
     )
 
     assert response.status_code == 200
-    assert (await get_obj(Category, category.id)).cat_sum == 0
+    assert await get_month_total(client, user, 2026, 9) == 0
 
 
 async def test_update_nonexistent_operation(
@@ -388,8 +402,8 @@ async def test_update_operation_of_other_user(
 async def test_delete_operation(client, create_user, create_category, create_operation):
     user = await create_user()
     category = await create_category(user)
-    operation = await create_operation(category, sum=100)
-    await create_operation(category, sum=50)
+    operation = await create_operation(category, sum=100, date=datetime(2026, 9, 1))
+    await create_operation(category, sum=50, date=datetime(2026, 9, 2))
 
     response = await client.delete(
         f"/api/v1/operations/delete/{operation.id}", headers=auth_headers(user)
@@ -398,7 +412,8 @@ async def test_delete_operation(client, create_user, create_category, create_ope
     assert response.status_code == 200
     assert response.json() == {"message": "Операция успешно удалена"}
     assert await get_obj(Operation, operation.id) is None
-    assert (await get_obj(Category, category.id)).cat_sum == 50
+    # Удалённая операция больше не учитывается в сумме за месяц
+    assert await get_month_total(client, user, 2026, 9) == 50
 
 
 async def test_delete_nonexistent_operation(

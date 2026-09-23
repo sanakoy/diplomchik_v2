@@ -1,5 +1,4 @@
 from datetime import datetime
-from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, String
@@ -18,10 +17,8 @@ class Category(Base):
     name: Mapped[str] = mapped_column(String(80))
     is_profit: Mapped[bool] = mapped_column()
     image_url: Mapped[str] = mapped_column(nullable=True)
-    cat_sum: Mapped[Decimal] = mapped_column(nullable=True, default=0)
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"))
     date_create: Mapped[datetime] = mapped_column(nullable=True)
-    date_upd_cat_sum: Mapped[datetime] = mapped_column(nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="category", lazy="raise")
     operation: Mapped[list["Operation"]] = relationship(
