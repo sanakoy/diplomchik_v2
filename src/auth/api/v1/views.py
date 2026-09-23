@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Cookie, Depends, Response, status
+from fastapi import APIRouter, Cookie, Depends, Request, Response, status
 
 from src.auth.authorization import get_current_user_by_access_token
 from src.auth.schemas import (
@@ -65,13 +65,19 @@ async def register(
 @auth.post(
     "/login",
     summary="Вход: access-токен в теле ответа, refresh-токен в httpOnly cookie",
+    responses={429: {"description": "Слишком много попыток входа"}},
 )
 async def login(
     data: LoginRequest,
+    request: Request,
     response: Response,
     service: AuthService = Depends(get_auth_service),
 ) -> AccessTokenResponse:
-    tokens = await service.login(data)
+    # За reverse proxy здесь будет адрес прокси: реальный IP клиента uvicorn возьмёт
+    # из X-Forwarded-For, только если запустить его с --proxy-headers
+    # и --forwarded-allow-ips (сам заголовок без этого доверять нельзя — его подделать легко)
+    client_ip = request.client.host if request.client else "unknown"
+    tokens = await service.login(data, client_ip=client_ip)
     set_refresh_cookie(response, tokens.refresh_token)
     return AccessTokenResponse(access_token=tokens.access_token)
 

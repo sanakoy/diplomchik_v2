@@ -12,8 +12,10 @@ from src.category.models import Category
 from src.database import get_session
 from src.main import app
 from src.operation.models import Operation
+from src.redis_client import get_redis
 from tests.utils import (
     TEST_ENGINE,
+    TEST_REDIS,
     TEST_SESSION_MAKER,
     add_obj,
     current_month_date,
@@ -32,6 +34,7 @@ async def prepare_database():
     # Схему не удаляем: после прогона в БД можно посмотреть данные упавшего теста,
     # чистоту гарантирует reset_schema перед следующим прогоном
     await TEST_ENGINE.dispose()
+    await TEST_REDIS.aclose()
 
 
 @pytest.fixture(autouse=True)
@@ -43,6 +46,8 @@ async def clean_tables(prepare_database):
                 "RESTART IDENTITY CASCADE"
             )
         )
+    # Счётчики попыток входа не должны переходить из теста в тест
+    await TEST_REDIS.flushdb()
 
 
 async def override_get_session():
@@ -50,9 +55,14 @@ async def override_get_session():
         yield session
 
 
+async def override_get_redis():
+    return TEST_REDIS
+
+
 @pytest.fixture
 async def client():
     app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[get_redis] = override_get_redis
     try:
         # raise_app_exceptions=False: необработанная ошибка приходит как 500, как у живого сервера
         transport = ASGITransport(app=app, raise_app_exceptions=False)
@@ -62,6 +72,7 @@ async def client():
     finally:
         # Снимаем только свою подмену: другие тесты могут подменять свои зависимости
         app.dependency_overrides.pop(get_session, None)
+        app.dependency_overrides.pop(get_redis, None)
 
 
 # Счётчики общие на весь прогон: имена уникальны, даже если объекты создаются в разных тестах

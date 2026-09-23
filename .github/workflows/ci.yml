@@ -61,6 +61,16 @@ jobs:
           --health-timeout 5s
           --health-retries 10
 
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     # .env.local в репозитории нет: settings читает эти же переменные из окружения
     env:
       # Основная БД тестами не используется, но settings требует её параметры.
@@ -81,6 +91,9 @@ jobs:
       ACCESS_TOKEN_EXPIRE_MINUTES: 15
       REFRESH_TOKEN_EXPIRE_DAYS: 30
       SERVICE_URL: http://localhost:8001
+      # Разные логические БД Redis: тесты очищают свою целиком
+      REDIS_URL: redis://localhost:6379/0
+      TEST_REDIS_URL: redis://localhost:6379/1
 
     steps:
       - uses: actions/checkout@v5

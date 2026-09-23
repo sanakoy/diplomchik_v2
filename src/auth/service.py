@@ -2,6 +2,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 from fastapi import Depends, HTTPException
+from redis.asyncio import Redis
 from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,9 +14,11 @@ from src.auth.password_hashing import (
     get_hashed_password,
     verify_password,
 )
+from src.auth.rate_limit import LoginRateLimiter
 from src.auth.refresh_tokens import generate_refresh_token, hash_refresh_token
 from src.auth.schemas import IssuedTokens, LoginRequest, RegisterRequest
 from src.database import get_session
+from src.redis_client import get_redis
 from src.service import BaseService
 from src.settings import settings
 
@@ -33,6 +36,10 @@ class AuthService(BaseService):
 
     model = User
 
+    def __init__(self, session: AsyncSession, rate_limiter: LoginRateLimiter):
+        super().__init__(session)
+        self.rate_limiter = rate_limiter
+
     async def register(self, data: RegisterRequest) -> User:
         user = User(
             email=data.email, hashed_password=get_hashed_password(data.password)
@@ -49,7 +56,9 @@ class AuthService(BaseService):
         await self.session.refresh(user)
         return user
 
-    async def login(self, data: LoginRequest) -> IssuedTokens:
+    async def login(self, data: LoginRequest, client_ip: str) -> IssuedTokens:
+        await self.rate_limiter.hit(ip=client_ip, email=data.email)
+
         user = (
             await self.session.execute(select(User).where(User.email == data.email))
         ).scalar_one_or_none()
@@ -71,6 +80,7 @@ class AuthService(BaseService):
         )
         tokens = self._issue_tokens(user_id=user.id, family_id=uuid.uuid4())
         await self.session.commit()
+        await self.rate_limiter.forget_successful(ip=client_ip, email=data.email)
         return tokens
 
     async def refresh(self, refresh_token: str | None) -> IssuedTokens:
@@ -151,5 +161,6 @@ class AuthService(BaseService):
 
 async def get_auth_service(
     session: AsyncSession = Depends(get_session),
+    redis: Redis = Depends(get_redis),
 ) -> AuthService:
-    return AuthService(session=session)
+    return AuthService(session=session, rate_limiter=LoginRateLimiter(redis))

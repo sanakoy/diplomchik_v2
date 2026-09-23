@@ -2,6 +2,7 @@ from collections.abc import Callable
 from datetime import datetime, timedelta
 
 from alembic.config import Config
+from redis.asyncio import Redis
 from sqlalchemy import Connection, text
 from sqlalchemy.ext.asyncio import (
     AsyncConnection,
@@ -15,10 +16,14 @@ from src.settings import settings, test_settings
 
 # Тесты удаляют схему БД целиком, поэтому основную БД трогать нельзя ни при каких настройках
 if test_settings.get_db_test_url == settings.get_db_url:
-    raise RuntimeError("TEST_DB_* в .env.local указывает на основную БД")
+    raise RuntimeError("TEST_DB_* указывает на основную БД")
+# Тесты очищают Redis целиком (FLUSHDB), поэтому он тоже должен быть отдельным
+if test_settings.TEST_REDIS_URL == settings.REDIS_URL:
+    raise RuntimeError("TEST_REDIS_URL совпадает с REDIS_URL")
 
 TEST_ENGINE = create_async_engine(test_settings.get_db_test_url)
 TEST_SESSION_MAKER = async_sessionmaker(TEST_ENGINE, expire_on_commit=False)
+TEST_REDIS = Redis.from_url(test_settings.TEST_REDIS_URL, decode_responses=True)
 
 
 def run_alembic(

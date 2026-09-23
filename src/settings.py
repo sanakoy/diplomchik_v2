@@ -24,6 +24,18 @@ class Settings(BaseSettings):
 
     SERVICE_URL: str
 
+    # 127.0.0.1, а не localhost: на Windows localhost сначала пробует IPv6 (::1),
+    # а Redis в docker-compose слушает только IPv4 — каждое подключение ждало бы ~2 с
+    REDIS_URL: str = "redis://127.0.0.1:6379/0"
+
+    # Ограничение попыток входа (POST /auth/login)
+    # По email: защита конкретного аккаунта от перебора пароля
+    LOGIN_MAX_ATTEMPTS_PER_EMAIL: int = 5
+    LOGIN_EMAIL_WINDOW_SECONDS: int = 15 * 60
+    # По IP: защита от перебора одного пароля по многим аккаунтам (password spraying)
+    LOGIN_MAX_ATTEMPTS_PER_IP: int = 20
+    LOGIN_IP_WINDOW_SECONDS: int = 5 * 60
+
     # В .env.local задаётся JSON-списком: CORS_ORIGINS='["http://localhost:5173"]'
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
@@ -47,6 +59,8 @@ class TestSettings(BaseSettings):
     TEST_DB_HOST: str
     TEST_DB_PORT: int
     TEST_DB_NAME: str
+    # Та же инстанция Redis, но другая логическая БД: тесты очищают её целиком
+    TEST_REDIS_URL: str = "redis://127.0.0.1:6379/1"
 
     MODE: str = "TEST"
 
