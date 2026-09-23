@@ -36,13 +36,15 @@ class OperationInGroup(BaseSchema):
 class GroupedOperationResponse(BaseSchema):
     grouped_operations: dict[str, list[OperationInGroup]]
     operation: str
-    month: int | None = None
-    year: int | None = None
-    current_month: int | None = datetime.now().month
-    current_year: int | None = datetime.now().year
-    cats_sum: dict[str, float | None] | None = None
-    total: float | None = 0
-    months_year: dict[str | None, list[int | None] | None] | None = None
+    month: int
+    year: int
+    # default_factory, а не datetime.now().month: иначе значение вычислялось бы
+    # один раз при импорте модуля и не менялось бы до перезапуска сервера
+    current_month: int = Field(default_factory=lambda: datetime.now().month)
+    current_year: int = Field(default_factory=lambda: datetime.now().year)
+    cats_sum: dict[str, float]
+    total: float
+    months_year: dict[str, list[int]]
 
 
 class CreateCategoryRequest(BaseSchema):

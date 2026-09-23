@@ -26,3 +26,10 @@ extend-immutable-calls = [
     "fastapi.Body",
     "fastapi.Path",
 ]
+
+[tool.mypy]
+python_version = "3.13"
+files = ["src"]
+plugins = ["pydantic.mypy"]
+# Библиотеки без аннотаций (alembic и прочие) не должны ронять проверку
+ignore_missing_imports = true

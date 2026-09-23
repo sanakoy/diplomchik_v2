@@ -41,6 +41,9 @@ jobs:
       - name: black
         run: black --check src tests
 
+      - name: mypy
+        run: mypy
+
   test:
     name: Тесты
     runs-on: ubuntu-latest

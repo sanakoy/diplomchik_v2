@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import datetime
 
 from fastapi import Depends, HTTPException
@@ -80,7 +81,7 @@ class CategoryService:
             user_id=auth_user.id, is_profit=is_profit, year=year, month=month
         )
         result = await self.session.execute(operations_query)
-        operations: list[Operation] = result.scalars().all()
+        operations: Sequence[Operation] = result.scalars().all()
 
         # 2. Агрегация данных в памяти (Заменяет get_grouped_operations, get_cats_sum и get_total)
         grouped_operations: dict[str, list[OperationInGroup]] = {}
