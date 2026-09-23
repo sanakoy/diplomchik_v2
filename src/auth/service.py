@@ -19,7 +19,6 @@ from src.auth.refresh_tokens import generate_refresh_token, hash_refresh_token
 from src.auth.schemas import IssuedTokens, LoginRequest, RegisterRequest
 from src.database import get_session
 from src.redis_client import get_redis
-from src.service import BaseService
 from src.settings import settings
 
 
@@ -27,17 +26,15 @@ def invalid_refresh_token() -> HTTPException:
     return HTTPException(status_code=401, detail="Недействительный refresh-токен")
 
 
-class AuthService(BaseService):
+class AuthService:
     """Регистрация, вход, ротация refresh-токенов и выход.
 
     В отличие от BaseService, методы сами управляют транзакцией: ротация
     (отзыв старого токена и выдача нового) должна пройти целиком или не пройти вовсе.
     """
 
-    model = User
-
     def __init__(self, session: AsyncSession, rate_limiter: LoginRateLimiter):
-        super().__init__(session)
+        self.session = session
         self.rate_limiter = rate_limiter
 
     async def register(self, data: RegisterRequest) -> User:
@@ -127,8 +124,8 @@ class AuthService(BaseService):
         )
         await self.session.commit()
 
-    async def get_user(self, user_id: int) -> User:
-        return await self.get_obj_by_id(user_id, model=User)
+    async def get_user(self, user_id: int) -> User | None:
+        return await self.session.get(User, user_id)
 
     def _issue_tokens(self, user_id: int, family_id: uuid.UUID) -> IssuedTokens:
         """Access-токен и новый refresh-токен. Запись о refresh добавляется в сессию,

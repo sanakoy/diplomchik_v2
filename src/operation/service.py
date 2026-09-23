@@ -14,11 +14,11 @@ from src.operation.schemas import (
     OperationView,
     UpdateOperationRequest,
 )
-from src.service import BaseService
 
 
-class OperationService(BaseService):
-    model = Operation
+class OperationService:
+    def __init__(self, session: AsyncSession):
+        self.session = session
 
     async def get_operations(
         self, auth_user: UserToken, params: OperationListParams
@@ -57,21 +57,22 @@ class OperationService(BaseService):
             ],
         )
 
-    async def check_own_operation(
+    async def get_own_operation(
         self, operation_id: int, auth_user: UserToken
-    ) -> None:
-        """Бросает 404, если операции нет или она принадлежит другому пользователю.
+    ) -> Operation:
+        """Операция пользователя или 404.
 
         Чужая операция и несуществующая дают одинаковый ответ: иначе по коду ответа
         можно перебором узнать, какие id заняты.
         """
-        query = (
-            select(Operation.id)
+        operation = await self.session.scalar(
+            select(Operation)
             .join(Category, Operation.category_id == Category.id)
             .filter(Operation.id == operation_id, Category.user_id == auth_user.id)
         )
-        if (await self.session.execute(query)).scalar_one_or_none() is None:
+        if operation is None:
             raise HTTPException(status_code=404, detail="Операция не найдена")
+        return operation
 
     async def check_own_category(self, category_id: int, auth_user: UserToken) -> None:
         """Бросает 404, если категории нет или она принадлежит другому пользователю."""
@@ -79,34 +80,40 @@ class OperationService(BaseService):
             Category.id == category_id,
             Category.user_id == auth_user.id,
         )
-        if (await self.session.execute(query)).scalar_one_or_none() is None:
+        if await self.session.scalar(query) is None:
             raise HTTPException(status_code=404, detail="Категория не найдена")
 
     async def create_operation(
         self, create_data: CreateOperationRequest, auth_user: UserToken
-    ):
+    ) -> Operation:
         await self.check_own_category(create_data.category_id, auth_user)
 
-        create_data_dict: dict = create_data.model_dump(exclude_unset=True)
-        new_operation_obj: Operation = await self.create_obj(create_data_dict)
-
-        return new_operation_obj
+        operation = Operation(**create_data.model_dump(exclude_unset=True))
+        self.session.add(operation)
+        await self.session.commit()
+        return operation
 
     async def update_operation(
         self,
         operation_id: int,
         update_data: UpdateOperationRequest,
         auth_user: UserToken,
-    ):
-        await self.check_own_operation(operation_id, auth_user)
+    ) -> Operation:
+        operation = await self.get_own_operation(operation_id, auth_user)
 
-        update_data_dict: dict = update_data.model_dump(exclude_unset=True)
-        await self.update_obj(operation_id, update_data_dict)
+        for field, value in update_data.model_dump(exclude_unset=True).items():
+            setattr(operation, field, value)
+        await self.session.commit()
+        return operation
 
-    async def delete_operation(self, operation_id: int, auth_user: UserToken):
-        await self.check_own_operation(operation_id, auth_user)
+    async def delete_operation(
+        self, operation_id: int, auth_user: UserToken
+    ) -> Operation:
+        operation = await self.get_own_operation(operation_id, auth_user)
 
-        return await self.delete_obj(operation_id)
+        await self.session.delete(operation)
+        await self.session.commit()
+        return operation
 
 
 async def get_operation_service(

@@ -17,11 +17,11 @@ from src.category.schemas import (
 )
 from src.database import get_session
 from src.operation.models import Operation
-from src.service import BaseService
 
 
-class CategoryService(BaseService):
-    model = Category
+class CategoryService:
+    def __init__(self, session: AsyncSession):
+        self.session = session
 
     async def get_categories(self, auth_user: UserToken, is_profit: bool):
         query = (
@@ -171,43 +171,48 @@ class CategoryService(BaseService):
 
     async def create_category(
         self, create_data: CreateCategoryRequest, auth_user: UserToken
-    ):
-        create_data_dict: dict = create_data.model_dump(exclude_unset=True)
-        create_data_dict.update({"user_id": auth_user.id})
-        new_category_obj: Category = await self.create_obj(create_data_dict)
+    ) -> Category:
+        category = Category(
+            **create_data.model_dump(exclude_unset=True), user_id=auth_user.id
+        )
+        self.session.add(category)
+        await self.session.commit()
+        return category
 
-        return new_category_obj
-
-    async def check_own_category(self, category_id: int, auth_user: UserToken) -> None:
-        """Бросает 404, если категории нет или она принадлежит другому пользователю.
+    async def get_own_category(
+        self, category_id: int, auth_user: UserToken
+    ) -> Category:
+        """Категория пользователя или 404.
 
         Чужая категория и несуществующая дают одинаковый ответ: иначе по коду ответа
         можно перебором узнать, какие id заняты.
         """
-        query = select(Category.id).filter(
-            Category.id == category_id,
-            Category.user_id == auth_user.id,
+        category = await self.session.scalar(
+            select(Category).filter(
+                Category.id == category_id,
+                Category.user_id == auth_user.id,
+            )
         )
-        if (await self.session.execute(query)).scalar_one_or_none() is None:
+        if category is None:
             raise HTTPException(status_code=404, detail="Категория не найдена")
+        return category
 
     async def update_category(
         self, category_id: int, update_data: UpdateCategoryRequest, auth_user: UserToken
-    ):
-        await self.check_own_category(category_id, auth_user)
+    ) -> Category:
+        category = await self.get_own_category(category_id, auth_user)
 
-        update_data_dict: dict = update_data.model_dump(exclude_unset=True)
-        updated_category_obj: Category = await self.update_obj(
-            category_id, update_data_dict
-        )
+        for field, value in update_data.model_dump(exclude_unset=True).items():
+            setattr(category, field, value)
+        await self.session.commit()
+        return category
 
-        return updated_category_obj
+    async def delete_category(self, category_id: int, auth_user: UserToken) -> Category:
+        category = await self.get_own_category(category_id, auth_user)
 
-    async def delete_category(self, category_id: int, auth_user: UserToken):
-        await self.check_own_category(category_id, auth_user)
-
-        deleted_category_obj: Category = await self.delete_obj(category_id)
-        return deleted_category_obj
+        await self.session.delete(category)
+        await self.session.commit()
+        return category
 
 
 async def get_category_service(
