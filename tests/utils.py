@@ -12,7 +12,8 @@ from sqlalchemy.ext.asyncio import (
 
 from src.auth.jwt_utils import create_access_token
 from src.auth.models import User
-from src.settings import settings, test_settings
+from src.settings import settings
+from tests.settings import test_settings
 
 # Тесты удаляют схему БД целиком, поэтому основную БД трогать нельзя ни при каких настройках
 if test_settings.get_db_test_url == settings.get_db_url:

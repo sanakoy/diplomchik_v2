@@ -53,30 +53,4 @@ class Settings(BaseSettings):
         )
 
 
-class TestSettings(BaseSettings):
-    TEST_DB_USER: str
-    TEST_DB_PASSWORD: str
-    TEST_DB_HOST: str
-    TEST_DB_PORT: int
-    TEST_DB_NAME: str
-    # Та же инстанция Redis, но другая логическая БД: тесты очищают её целиком
-    TEST_REDIS_URL: str = "redis://127.0.0.1:6379/1"
-
-    MODE: str = "TEST"
-
-    @property
-    def get_db_test_url(self):
-        return (
-            f"postgresql+asyncpg://{self.TEST_DB_USER}:{self.TEST_DB_PASSWORD}@"
-            f"{self.TEST_DB_HOST}:{self.TEST_DB_PORT}/{self.TEST_DB_NAME}"
-        )
-
-    model_config = SettingsConfigDict(
-        env_file=ENV_PATH,
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
-
-
-test_settings = TestSettings()
 settings = Settings()
