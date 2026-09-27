@@ -32,11 +32,13 @@ export function AppLayout() {
                 key={item.to}
                 to={item.to}
                 end
-                // Текущий раздел подчёркнут, как закладка; NavLink сам ставит aria-current="page"
+                // Текущий раздел — цветом и подчёркиванием, как закладка; NavLink сам
+                // ставит aria-current="page". Начертание у всех пунктов одно: полужирный
+                // шире обычного, и соседний пункт сдвигался бы при переключении
                 className={({ isActive }) =>
                   isActive
                     ? 'font-medium text-foreground underline decoration-2 underline-offset-8'
-                    : 'text-muted-foreground hover:text-foreground'
+                    : 'font-medium text-muted-foreground hover:text-foreground'
                 }
               >
                 {item.label}
