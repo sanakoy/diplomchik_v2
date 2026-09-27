@@ -87,6 +87,53 @@ async def test_categories_sum_only_current_month(
     assert data["total"] == 100
 
 
+async def test_categories_sum_for_requested_month(
+    client, create_user, create_category, create_operation
+):
+    user = await create_user()
+    food = await create_category(user)
+    await create_operation(food, sum=100, date=current_month_date())
+    past = previous_month_date()
+    await create_operation(food, sum=1000, date=past)
+
+    response = await client.get(
+        "/api/v1/categories/spending",
+        params={"year": past.year, "month": past.month},
+        headers=auth_headers(user),
+    )
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["cats"][0]["cat_sum"] == 1000
+    assert data["total"] == 1000
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"year": 2026},
+        {"month": 9},
+        {"year": 2026, "month": 13},
+        {"year": 1800, "month": 1},
+    ],
+)
+async def test_categories_invalid_month_params(client, create_user, params):
+    user = await create_user()
+
+    response = await client.get(
+        "/api/v1/categories/profit", params=params, headers=auth_headers(user)
+    )
+    assert response.status_code == 422
+
+    # Контроль: тот же пользователь с корректным месяцем получает 200
+    response = await client.get(
+        "/api/v1/categories/profit",
+        params={"year": 2026, "month": 9},
+        headers=auth_headers(user),
+    )
+    assert response.status_code == 200
+
+
 async def test_categories_of_other_user_are_hidden(
     client, create_user, create_category, create_operation
 ):

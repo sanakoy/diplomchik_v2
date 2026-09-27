@@ -18,21 +18,28 @@ from src.category.schemas import (
 )
 from src.database import get_session
 from src.operation.models import Operation
+from src.schemas import MonthFilter
 
 
 class CategoryService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_categories(self, auth_user: UserToken, is_profit: bool):
+    async def get_categories(
+        self, auth_user: UserToken, is_profit: bool, period: MonthFilter
+    ):
+        # cat_sum считается за переданный месяц, без параметров — за текущий
+        now = datetime.now()
+        year = period.year if period.year is not None else now.year
+        month = period.month if period.month is not None else now.month
         query = (
             select(Category, func.sum(Operation.sum).label("cat_sum"))
             .outerjoin(
                 Operation,
                 and_(
                     Operation.category_id == Category.id,
-                    extract("year", Operation.date) == datetime.now().year,
-                    extract("month", Operation.date) == datetime.now().month,
+                    extract("year", Operation.date) == year,
+                    extract("month", Operation.date) == month,
                 ),
             )
             .filter(

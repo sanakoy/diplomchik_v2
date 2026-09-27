@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Query
 
 from src.auth.authorization import get_current_user_by_access_token
 from src.auth.schemas import UserToken
@@ -10,28 +12,31 @@ from src.category.schemas import (
     UpdateCategoryRequest,
 )
 from src.category.service import CategoryService, get_category_service
+from src.schemas import MonthFilter
 
 category = APIRouter()
 
 
-@category.get("/spending", summary="Вывод категорий расходов")
+@category.get("/spending", summary="Категории расходов с суммами за месяц")
 async def get_spending_categories(
+    period: Annotated[MonthFilter, Query()],
     service: CategoryService = Depends(get_category_service),
     auth_user: UserToken = Depends(get_current_user_by_access_token),
 ) -> CategoryPageResponse:
     category_page_data: CategoriesPage = await service.get_categories(
-        auth_user=auth_user, is_profit=False
+        auth_user=auth_user, is_profit=False, period=period
     )
     return CategoryPageResponse(data=category_page_data)
 
 
-@category.get("/profit", summary="Вывод категорий доходов")
+@category.get("/profit", summary="Категории доходов с суммами за месяц")
 async def get_profit_categories(
+    period: Annotated[MonthFilter, Query()],
     service: CategoryService = Depends(get_category_service),
     auth_user: UserToken = Depends(get_current_user_by_access_token),
 ) -> CategoryPageResponse:
     category_page_data: CategoriesPage = await service.get_categories(
-        auth_user=auth_user, is_profit=True
+        auth_user=auth_user, is_profit=True, period=period
     )
     return CategoryPageResponse(data=category_page_data)
 
