@@ -1,0 +1,22 @@
+# Секреты в образ не попадают: настройки передаются переменными окружения
+.env
+.env.local
+
+# Локальное окружение и мусор
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Не нужно для запуска приложения
+.git/
+.github/
+.vscode/
+.agents/
+.claude/
+tests/
+CLAUDE.md
+skills-lock.json

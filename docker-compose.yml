@@ -1,40 +1,81 @@
-version: '3.8'
-
+# Переменные берутся из .env рядом с этим файлом (см. .env.example).
+# Запись ${VAR:?текст} означает: без этой переменной compose не стартует
+# и скажет, чего не хватает, вместо тихого запуска с пустым паролем.
 services:
- postgres_diplomchik_v2:
-   image: postgres:15
-   container_name: db_diplomchik_v2
-   environment:
-     POSTGRES_USER: user
-     POSTGRES_PASSWORD: 123qwe
-     POSTGRES_DB: db_diplomchik_v2
-   ports:
-     - "127.0.0.1:5435:5432"
-   volumes:
-     - postgres_data_diplomchik_v2:/var/lib/postgresql/data
-   restart: unless-stopped
- postgres_diplomchik_v2_test:
-   image: postgres:15
-   container_name: db_diplomchik_v2_test
-   environment:
-     POSTGRES_USER: user
-     POSTGRES_PASSWORD: 123qwe
-     POSTGRES_DB: db_diplomchik_v2_test
-   ports:
-     - "127.0.0.1:5436:5432"
-   volumes:
-     - postgres_data_diplomchik_v2_test:/var/lib/postgresql/data
-   restart: unless-stopped
+  app:
+    build: .
+    container_name: app_diplomchik_v2
+    # Настройки приложения — из .env, кроме адресов: внутри сети compose
+    # контейнеры обращаются друг к другу по имени сервиса, а не по 127.0.0.1
+    env_file: .env
+    environment:
+      DB_HOST: postgres_diplomchik_v2
+      DB_PORT: 5432
+      REDIS_URL: redis://redis_diplomchik_v2:6379/0
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      postgres_diplomchik_v2:
+        condition: service_healthy
+      redis_diplomchik_v2:
+        condition: service_healthy
+    healthcheck:
+      # Без обращения к БД: /health отвечает за «процесс жив», а не «зависимости на месте»
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
 
- redis_diplomchik_v2:
-   image: redis:7-alpine
-   container_name: redis_diplomchik_v2
-   ports:
-     - "127.0.0.1:6379:6379"
-   restart: unless-stopped
+  postgres_diplomchik_v2:
+    image: postgres:15
+    container_name: db_diplomchik_v2
+    environment:
+      POSTGRES_USER: ${DB_USER:?задайте DB_USER в .env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?задайте DB_PASSWORD в .env}
+      POSTGRES_DB: ${DB_NAME:?задайте DB_NAME в .env}
+    ports:
+      - "127.0.0.1:${DB_PORT:-5435}:5432"
+    volumes:
+      - postgres_data_diplomchik_v2:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  postgres_diplomchik_v2_test:
+    # Нужна только для pytest, поэтому по умолчанию не поднимается:
+    # docker compose --profile test up -d
+    profiles: [ "test" ]
+    image: postgres:15
+    container_name: db_diplomchik_v2_test
+    environment:
+      # Значения по умолчанию, а не ${VAR:?}: compose разбирает весь файл целиком,
+      # и на сервере без TEST_DB_* он бы не запустился даже без этого профиля
+      POSTGRES_USER: ${TEST_DB_USER:-user}
+      POSTGRES_PASSWORD: ${TEST_DB_PASSWORD:-test}
+      POSTGRES_DB: ${TEST_DB_NAME:-db_diplomchik_v2_test}
+    ports:
+      - "127.0.0.1:${TEST_DB_PORT:-5436}:5432"
+    volumes:
+      - postgres_data_diplomchik_v2_test:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis_diplomchik_v2:
+    image: redis:7-alpine
+    container_name: redis_diplomchik_v2
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
 
 volumes:
- postgres_data_diplomchik_v2:
- postgres_data_diplomchik_v2_test:
-
-
+  postgres_data_diplomchik_v2:
+  postgres_data_diplomchik_v2_test:
