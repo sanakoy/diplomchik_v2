@@ -1,3 +1,45 @@
+[project]
+name = "diplomchik-v2"
+version = "0.1.0"
+description = "Бэкенд для учёта личных финансов: категории, операции, статистика"
+requires-python = ">=3.13"
+# Прямые зависимости: только то, что импортирует сам проект.
+# Точные версии всего дерева фиксирует uv.lock
+dependencies = [
+    "alembic>=1.17.1",
+    "asyncpg>=0.30.0",
+    "bcrypt>=5.0.0",
+    "email-validator>=2.3.0",
+    "fastapi>=0.141.1",
+    "pydantic>=2.12.3",
+    "pydantic-settings>=2.11.0",
+    "pyjwt>=2.10.1",
+    "redis>=8.1.0",
+    "sqlalchemy[asyncio]>=2.0.44",
+    "uvicorn>=0.38.0",
+]
+
+# Инструменты разработки: в Docker-образ не попадают
+[dependency-groups]
+dev = [
+    "black>=25.9.0",
+    "httpx>=0.28.1",
+    "mypy>=2.3.1",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.4.0",
+    "ruff>=0.16.8",
+]
+
+[tool.uv]
+# Проект не собирается в пакет: uv ставит только зависимости,
+# а код запускается из корня репозитория (pythonpath = "." в pytest.ini)
+package = false
+
+[tool.black]
+# Явно, иначе black берёт цель из requires-python (>=3.13) и может форматировать
+# под более новый Python, чем тот, на котором запущен
+target-version = ["py313"]
+
 [tool.ruff]
 target-version = "py313"
 line-length = 88
