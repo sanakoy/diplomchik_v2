@@ -1,5 +1,8 @@
+from datetime import datetime
+from decimal import Decimal
+
 from fastapi import Depends, HTTPException
-from sqlalchemy import extract, select
+from sqlalchemy import extract, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import contains_eager
 
@@ -8,7 +11,11 @@ from src.category.models import Category
 from src.database import get_session
 from src.operation.models import Operation
 from src.operation.schemas import (
+    CategoryTotal,
     CreateOperationRequest,
+    MonthlyTotal,
+    MonthlyTotalsParams,
+    MonthlyTotalsResponse,
     OperationListParams,
     OperationsPage,
     OperationView,
@@ -55,6 +62,83 @@ class OperationService:
                 )
                 for op in operations
             ],
+        )
+
+    async def get_monthly_totals(
+        self, auth_user: UserToken, params: MonthlyTotalsParams
+    ) -> MonthlyTotalsResponse:
+        now = datetime.now()
+        last_year = params.year if params.year is not None else now.year
+        last_month = params.month if params.month is not None else now.month
+
+        # Месяцы периода как номера «год * 12 + месяц - 1»: так сдвиг через
+        # границу года — обычное вычитание
+        last_index = last_year * 12 + last_month - 1
+        indexes = range(last_index - params.months + 1, last_index + 1)
+        periods = [(index // 12, index % 12 + 1) for index in indexes]
+
+        # Диапазон дат, а не extract() в WHERE: условие по самой колонке
+        # сможет использовать индекс по operation.date, если он появится
+        first_year, first_month = periods[0]
+        next_year, next_month = divmod(last_index + 1, 12)
+        date_from = datetime(first_year, first_month, 1)
+        date_to = datetime(next_year, next_month + 1, 1)
+
+        year = extract("year", Operation.date)
+        month = extract("month", Operation.date)
+        # Сумма по каждой категории в каждом месяце; доход и расход месяца —
+        # это суммы этих строк, отдельный запрос для них не нужен
+        totals_query = (
+            select(
+                year,
+                month,
+                Category.id,
+                Category.name,
+                Category.is_profit,
+                func.sum(Operation.sum),
+            )
+            .join(Category, Operation.category_id == Category.id)
+            .filter(
+                Category.user_id == auth_user.id,
+                Operation.date >= date_from,
+                Operation.date < date_to,
+            )
+            .group_by(year, month, Category.id, Category.name, Category.is_profit)
+        )
+        rows = (await self.session.execute(totals_query)).all()
+
+        by_month: dict[tuple[int, int], list[CategoryTotal]] = {}
+        # Итоги копим в Decimal, как они хранятся в БД: во float сумма
+        # многих дробных значений накапливает ошибку
+        income: dict[tuple[int, int], Decimal] = {}
+        expense: dict[tuple[int, int], Decimal] = {}
+        for row_year, row_month, category_id, name, is_profit, total in rows:
+            key = (int(row_year), int(row_month))
+            by_month.setdefault(key, []).append(
+                CategoryTotal(
+                    category_id=category_id,
+                    name=name,
+                    is_profit=is_profit,
+                    sum=float(total),
+                )
+            )
+            target = income if is_profit else expense
+            target[key] = target.get(key, Decimal(0)) + total
+
+        return MonthlyTotalsResponse(
+            data=[
+                MonthlyTotal(
+                    year=key[0],
+                    month=key[1],
+                    income=float(income.get(key, 0)),
+                    expense=float(expense.get(key, 0)),
+                    categories=sorted(
+                        by_month.get(key, []),
+                        key=lambda category: (-category.sum, category.name),
+                    ),
+                )
+                for key in periods
+            ]
         )
 
     async def get_own_operation(

@@ -38,6 +38,33 @@ class OperationListParams(MonthFilter):
     operation: Literal["profit", "spending"] | None = None
 
 
+class MonthlyTotalsParams(MonthFilter):
+    """Период для статистики: months месяцев, последний — year/month (по умолчанию текущий)."""
+
+    months: int = Field(default=12, ge=1, le=36)
+
+
+class CategoryTotal(BaseSchema):
+    category_id: int
+    name: str
+    is_profit: bool
+    sum: float
+
+
+class MonthlyTotal(BaseSchema):
+    year: int
+    month: int
+    income: float
+    expense: float
+    # Категории с операциями в этом месяце, от большей суммы к меньшей
+    categories: list[CategoryTotal]
+
+
+class MonthlyTotalsResponse(BaseSchema):
+    # От старых месяцев к новым; месяцы без операций тоже есть, с нулями
+    data: list[MonthlyTotal]
+
+
 class OperationView(BaseSchema):
     id: int
     sum: float

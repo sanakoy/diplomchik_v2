@@ -6,6 +6,8 @@ from src.auth.authorization import get_current_user_by_access_token
 from src.auth.schemas import UserToken
 from src.operation.schemas import (
     CreateOperationRequest,
+    MonthlyTotalsParams,
+    MonthlyTotalsResponse,
     OperationListParams,
     OperationsPage,
     UpdateOperationRequest,
@@ -22,6 +24,15 @@ async def get_operations(
     auth_user: UserToken = Depends(get_current_user_by_access_token),
 ) -> OperationsPage:
     return await service.get_operations(auth_user, params)
+
+
+@operation.get("/monthly-totals", summary="Доходы и расходы по месяцам для статистики")
+async def get_monthly_totals(
+    params: Annotated[MonthlyTotalsParams, Query()],
+    service: OperationService = Depends(get_operation_service),
+    auth_user: UserToken = Depends(get_current_user_by_access_token),
+) -> MonthlyTotalsResponse:
+    return await service.get_monthly_totals(auth_user, params)
 
 
 @operation.post("/create", summary="Создание операции")

@@ -494,3 +494,190 @@ async def test_delete_operation_of_other_user(
 
     assert response.status_code == 404
     assert await get_obj(Operation, other_operation.id) is not None
+
+
+# ---------- GET /monthly-totals ----------
+
+
+async def get_monthly_totals(client, user, **params):
+    response = await client.get(
+        "/api/v1/operations/monthly-totals", params=params, headers=auth_headers(user)
+    )
+    assert response.status_code == 200
+    return response.json()["data"]
+
+
+async def test_monthly_totals(client, create_user, create_category, create_operation):
+    user = await create_user()
+    food = await create_category(user, name="Продукты")
+    cafe = await create_category(user, name="Кафе")
+    salary = await create_category(user, name="Зарплата", is_profit=True)
+    await create_operation(food, sum=100.5, date=datetime(2026, 7, 3))
+    await create_operation(cafe, sum=200, date=datetime(2026, 7, 20))
+    await create_operation(salary, sum=5000, date=datetime(2026, 7, 5))
+    await create_operation(salary, sum=6000, date=datetime(2026, 9, 5))
+
+    data = await get_monthly_totals(client, user, year=2026, month=9, months=3)
+
+    def category_total(category, total):
+        return {
+            "category_id": category.id,
+            "name": category.name,
+            "is_profit": category.is_profit,
+            "sum": total,
+        }
+
+    # От старых месяцев к новым, август без операций — с нулями.
+    # Категории внутри месяца — от большей суммы к меньшей
+    assert data == [
+        {
+            "year": 2026,
+            "month": 7,
+            "income": 5000,
+            "expense": 300.5,
+            "categories": [
+                category_total(salary, 5000),
+                category_total(cafe, 200),
+                category_total(food, 100.5),
+            ],
+        },
+        {"year": 2026, "month": 8, "income": 0, "expense": 0, "categories": []},
+        {
+            "year": 2026,
+            "month": 9,
+            "income": 6000,
+            "expense": 0,
+            "categories": [category_total(salary, 6000)],
+        },
+    ]
+
+
+async def test_monthly_totals_period_boundaries(
+    client, create_user, create_category, create_operation
+):
+    user = await create_user()
+    food = await create_category(user)
+    await create_operation(food, sum=1, date=datetime(2025, 11, 30, 23, 59, 59))
+    await create_operation(food, sum=10, date=datetime(2025, 12, 1, 0, 0))
+    await create_operation(food, sum=100, date=datetime(2026, 2, 28, 23, 59, 59))
+    await create_operation(food, sum=1000, date=datetime(2026, 3, 1, 0, 0))
+
+    # Период 3 месяца, конец — февраль: через границу года, декабрь–февраль
+    data = await get_monthly_totals(client, user, year=2026, month=2, months=3)
+
+    assert [(row["year"], row["month"], row["expense"]) for row in data] == [
+        (2025, 12, 10),
+        (2026, 1, 0),
+        (2026, 2, 100),
+    ]
+
+
+async def test_monthly_totals_sums_operations_of_category(
+    client, create_user, create_category, create_operation
+):
+    user = await create_user()
+    food = await create_category(user, name="Продукты")
+    cafe = await create_category(user, name="Кафе")
+    # Одно имя в расходах и доходах — разные категории, суммы не смешиваются
+    gifts_spent = await create_category(user, name="Подарки", is_profit=False)
+    gifts_received = await create_category(user, name="Подарки", is_profit=True)
+    await create_operation(food, sum=0.05, date=datetime(2026, 9, 2))
+    await create_operation(food, sum=0.05, date=datetime(2026, 9, 3))
+    await create_operation(cafe, sum=0.2, date=datetime(2026, 9, 4))
+    await create_operation(gifts_spent, sum=0.3, date=datetime(2026, 9, 5))
+    await create_operation(gifts_received, sum=700, date=datetime(2026, 9, 6))
+
+    [september] = await get_monthly_totals(client, user, year=2026, month=9, months=1)
+
+    # Во float 0.1 + 0.2 + 0.3 = 0.6000000000000001: итог копится в Decimal
+    assert september["expense"] == 0.6
+    assert september["income"] == 700
+    assert [(row["category_id"], row["sum"]) for row in september["categories"]] == [
+        (gifts_received.id, 700),
+        (gifts_spent.id, 0.3),
+        (cafe.id, 0.2),
+        (food.id, 0.1),
+    ]
+
+
+async def test_monthly_totals_of_other_user_are_hidden(
+    client, create_user, create_category, create_operation
+):
+    user = await create_user()
+    other_user = await create_user()
+    own = await create_category(user)
+    other = await create_category(other_user)
+    await create_operation(own, sum=100, date=datetime(2026, 9, 1))
+    await create_operation(other, sum=7000, date=datetime(2026, 9, 1))
+
+    data = await get_monthly_totals(client, user, year=2026, month=9, months=1)
+
+    assert data == [
+        {
+            "year": 2026,
+            "month": 9,
+            "income": 0,
+            "expense": 100,
+            "categories": [
+                {
+                    "category_id": own.id,
+                    "name": own.name,
+                    "is_profit": False,
+                    "sum": 100,
+                }
+            ],
+        }
+    ]
+
+
+async def test_monthly_totals_defaults_to_last_12_months(client, create_user):
+    user = await create_user()
+
+    data = await get_monthly_totals(client, user)
+
+    now = datetime.now()
+    assert len(data) == 12
+    assert (data[-1]["year"], data[-1]["month"]) == (now.year, now.month)
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"months": 0},
+        {"months": 37},
+        {"year": 2026},
+        {"month": 9},
+        {"year": 2026, "month": 13},
+    ],
+)
+async def test_monthly_totals_invalid_params(client, create_user, params):
+    user = await create_user()
+
+    response = await client.get(
+        "/api/v1/operations/monthly-totals",
+        params=params,
+        headers=auth_headers(user),
+    )
+    assert response.status_code == 422
+
+    # Контроль: крайние допустимые значения проходят
+    response = await client.get(
+        "/api/v1/operations/monthly-totals",
+        params={"year": 2026, "month": 12, "months": 36},
+        headers=auth_headers(user),
+    )
+    assert response.status_code == 200
+    assert len(response.json()["data"]) == 36
+
+
+async def test_monthly_totals_requires_auth(client, create_user):
+    user = await create_user()
+
+    response = await client.get("/api/v1/operations/monthly-totals")
+
+    assert response.status_code == 401
+    # Контроль: тот же запрос с токеном проходит
+    response = await client.get(
+        "/api/v1/operations/monthly-totals", headers=auth_headers(user)
+    )
+    assert response.status_code == 200
