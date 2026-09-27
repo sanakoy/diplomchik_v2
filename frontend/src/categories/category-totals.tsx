@@ -1,3 +1,5 @@
+import { Link } from 'react-router'
+
 import { formatAmount } from '@/lib/format'
 import type { YearMonth } from '@/lib/month'
 
@@ -24,7 +26,14 @@ function CategoryGroup({ kind, month }: { kind: OperationKind; month: YearMonth 
   } else if (!categories.data) {
     body = <p className="py-3 text-sm text-muted-foreground">Загрузка…</p>
   } else if (categories.data.length === 0) {
-    body = <p className="py-3 text-sm text-muted-foreground">{group.empty}</p>
+    body = (
+      <p className="py-3 text-sm text-muted-foreground">
+        {group.empty}{' '}
+        <Link to="/categories" className="font-medium text-foreground underline underline-offset-4">
+          Добавить
+        </Link>
+      </p>
+    )
   } else {
     const total = categories.data.reduce((sum, category) => sum + (category.cat_sum ?? 0), 0)
     body = (

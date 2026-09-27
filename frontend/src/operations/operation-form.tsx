@@ -1,24 +1,22 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Link } from 'react-router'
 
 import { FormField } from '@/components/form-field'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { parseAmount } from '@/lib/format'
 import { todayIsoDate, type YearMonth } from '@/lib/month'
 
-import {
-  CreateOperationError,
-  useCategories,
-  useCreateOperation,
-  type OperationKind,
-} from './queries'
+import { isNotFound } from '@/api/errors'
+import { useCategories, type OperationKind } from '@/categories/queries'
+import { KindToggle } from '@/components/kind-toggle'
 
-const KIND_LABELS: Record<OperationKind, string> = { spending: 'Расход', profit: 'Доход' }
+import { useCreateOperation } from './queries'
+import { COMMENT_MAX_LENGTH, validateOperationFields } from './validation'
+
 const EMPTY_CATEGORIES: Record<OperationKind, string> = {
   spending: 'Категорий расходов пока нет.',
   profit: 'Категорий доходов пока нет.',
 }
-const COMMENT_MAX_LENGTH = 100 // столько вмещает колонка operation.comment
 const STAMP_VISIBLE_MS = 2000
 
 interface FieldErrors {
@@ -28,7 +26,7 @@ interface FieldErrors {
 }
 
 function errorMessage(error: unknown): string {
-  if (error instanceof CreateOperationError && error.status === 404) {
+  if (isNotFound(error)) {
     return 'Категория не найдена: возможно, её удалили. Обновите страницу.'
   }
   return 'Не удалось записать. Попробуйте ещё раз.'
@@ -75,11 +73,10 @@ export function OperationForm({ month, onSaved }: OperationFormProps) {
     event.preventDefault()
     setFormError(null)
 
-    const sum = parseAmount(amount)
+    const { sum, errors: fieldErrors } = validateOperationFields(amount, date)
     const nextErrors: FieldErrors = {
-      amount: sum === null ? 'Введите сумму больше нуля, например 1250,50.' : undefined,
+      ...fieldErrors,
       category: categoryId ? undefined : 'Выберите категорию.',
-      date: date ? undefined : 'Укажите дату.',
     }
     setErrors(nextErrors)
     if (sum === null || !categoryId || !date) return
@@ -115,25 +112,7 @@ export function OperationForm({ month, onSaved }: OperationFormProps) {
           Новая запись
         </h2>
 
-        <fieldset className="flex rounded-lg border border-rule bg-sheet p-0.5">
-          <legend className="sr-only">Тип записи</legend>
-          {(['spending', 'profit'] as const).map((value) => (
-            <label
-              key={value}
-              className="cursor-pointer rounded-md px-4 py-1.5 text-sm font-medium text-muted-foreground transition-colors has-checked:bg-ink has-checked:text-sheet has-focus-visible:ring-3 has-focus-visible:ring-ring/50"
-            >
-              <input
-                type="radio"
-                name="kind"
-                value={value}
-                checked={kind === value}
-                onChange={() => changeKind(value)}
-                className="sr-only"
-              />
-              {KIND_LABELS[value]}
-            </label>
-          ))}
-        </fieldset>
+        <KindToggle name="operation-kind" value={kind} onChange={changeKind} />
       </div>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1fr)]">
@@ -177,7 +156,14 @@ export function OperationForm({ month, onSaved }: OperationFormProps) {
             >
               {categories.isError
                 ? 'Не удалось загрузить категории.'
-                : (errors.category ?? EMPTY_CATEGORIES[kind])}
+                : (errors.category ?? (
+                    <>
+                      {EMPTY_CATEGORIES[kind]}{' '}
+                      <Link to="/categories" className="font-medium text-foreground underline underline-offset-4">
+                    Добавить категорию
+                  </Link>
+                    </>
+                  ))}
             </p>
           )}
         </div>

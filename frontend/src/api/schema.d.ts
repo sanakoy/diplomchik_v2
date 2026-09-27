@@ -360,8 +360,11 @@ export interface components {
             name: string;
             /** Image Url */
             image_url?: string | null;
-            /** Operation */
-            operation: string;
+            /**
+             * Operation
+             * @enum {string}
+             */
+            operation: "profit" | "spending";
             /** Is Profit */
             is_profit?: boolean | null;
         };

@@ -1,8 +1,16 @@
+import { Pencil } from 'lucide-react'
+
+import { Button } from '@/components/ui/button'
 import { formatAmount, formatDayMonth, formatSignedAmount } from '@/lib/format'
 
 import type { Operation } from './queries'
 
-export function LedgerTable({ operations }: { operations: Operation[] }) {
+interface LedgerTableProps {
+  operations: Operation[]
+  onEdit: (operation: Operation) => void
+}
+
+export function LedgerTable({ operations, onEdit }: LedgerTableProps) {
   return (
     <table className="w-full border-collapse text-[15px]">
       <caption className="sr-only">Записи за месяц, новые сверху</caption>
@@ -23,6 +31,9 @@ export function LedgerTable({ operations }: { operations: Operation[] }) {
           </th>
           <th scope="col" className="hidden w-36 pb-2 text-right font-normal sm:table-cell">
             Расход
+          </th>
+          <th scope="col" className="w-12 pb-2 sm:w-10">
+            <span className="sr-only">Действия</span>
           </th>
         </tr>
       </thead>
@@ -50,6 +61,19 @@ export function LedgerTable({ operations }: { operations: Operation[] }) {
             </td>
             <td className="amount hidden py-3 text-right text-expense sm:table-cell">
               {operation.is_profit ? '' : formatAmount(operation.sum)}
+            </td>
+            <td className="py-2 pl-2 text-right">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-10 sm:size-8"
+                // В названии кнопки — какая запись: иначе скринридер прочитает
+                // десяток одинаковых «Изменить»
+                aria-label={`Изменить запись: ${operation.cat_name}, ${operation.date ? formatDayMonth(operation.date) : 'без даты'}`}
+                onClick={() => onEdit(operation)}
+              >
+                <Pencil />
+              </Button>
             </td>
           </tr>
         ))}
