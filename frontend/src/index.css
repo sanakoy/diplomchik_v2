@@ -1,13 +1,68 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
+@import "@fontsource-variable/onest";
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * «Книжка учёта»: интерфейс как бумажная книжка доходов и расходов.
+ * Бумага — бледный серо-зелёный, как у защищённых бланков; чернила — основной текст;
+ * линовка вместо теней; расход красным штампом, доход зелёной печатью.
+ */
+:root {
+    --paper: #E9EFE8;
+    --sheet: #F4F7F2;
+    --ink: #1D2B3A;
+    --ink-soft: #52615E;
+    --rule: #BCC8BE;
+    --expense: #B42D2D;
+    --income: #1F6B4A;
+
+    --background: var(--paper);
+    --foreground: var(--ink);
+    --card: var(--sheet);
+    --card-foreground: var(--ink);
+    --popover: var(--sheet);
+    --popover-foreground: var(--ink);
+    --primary: var(--ink);
+    --primary-foreground: var(--sheet);
+    --secondary: #DCE4DB;
+    --secondary-foreground: var(--ink);
+    --muted: #DCE4DB;
+    --muted-foreground: var(--ink-soft);
+    --accent: #DCE4DB;
+    --accent-foreground: var(--ink);
+    --destructive: var(--expense);
+    --border: var(--rule);
+    --input: var(--rule);
+    /* Кольцо фокуса синее, а не чернильное: на бумаге оно должно быть заметно */
+    --ring: #3056C0;
+    --chart-1: var(--ink);
+    --chart-2: var(--income);
+    --chart-3: var(--expense);
+    --chart-4: #7A8C86;
+    --chart-5: #A8B7AF;
+    --radius: 0.375rem;
+    --sidebar: var(--sheet);
+    --sidebar-foreground: var(--ink);
+    --sidebar-primary: var(--ink);
+    --sidebar-primary-foreground: var(--sheet);
+    --sidebar-accent: #DCE4DB;
+    --sidebar-accent-foreground: var(--ink);
+    --sidebar-border: var(--rule);
+    --sidebar-ring: #3056C0;
+}
+
 @theme inline {
+    --font-sans: 'Onest Variable', system-ui, sans-serif;
     --font-heading: var(--font-sans);
-    --font-sans: 'Geist Variable', sans-serif;
+    --color-paper: var(--paper);
+    --color-sheet: var(--sheet);
+    --color-ink: var(--ink);
+    --color-rule: var(--rule);
+    --color-income: var(--income);
+    --color-expense: var(--expense);
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -43,88 +98,49 @@
     --radius-md: calc(var(--radius) * 0.8);
     --radius-lg: var(--radius);
     --radius-xl: calc(var(--radius) * 1.4);
-    --radius-2xl: calc(var(--radius) * 1.8);
-    --radius-3xl: calc(var(--radius) * 2.2);
-    --radius-4xl: calc(var(--radius) * 2.6);
-}
-
-:root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
-}
-
-.dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
+    * {
+        @apply border-border outline-ring/50;
     }
-  body {
-    @apply bg-background text-foreground;
+    body {
+        @apply bg-background text-foreground antialiased;
     }
-  html {
-    @apply font-sans;
+    html {
+        @apply font-sans;
+    }
+}
+
+@layer utilities {
+    /* Суммы стоят ровным столбцом: все цифры одной ширины */
+    .amount {
+        font-variant-numeric: tabular-nums;
+        font-feature-settings: "tnum";
+        letter-spacing: -0.01em;
+    }
+}
+
+/* Штамп «Проведено» ложится на страницу один раз при загрузке */
+@keyframes stamp-in {
+    from {
+        opacity: 0;
+        transform: rotate(-9deg) scale(1.35);
+    }
+    to {
+        opacity: 0.88;
+        transform: rotate(-9deg) scale(1);
+    }
+}
+
+.stamp {
+    opacity: 0.88;
+    transform: rotate(-9deg);
+    animation: stamp-in 420ms cubic-bezier(0.2, 0.9, 0.3, 1.2) 350ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .stamp {
+        animation: none;
     }
 }

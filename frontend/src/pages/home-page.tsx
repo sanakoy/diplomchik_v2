@@ -1,26 +1,31 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { api } from '@/api/client'
+import { logout } from '@/auth/actions'
+import { Button } from '@/components/ui/button'
 
-// Временная страница первого этапа: проверяет, что фронт достучался до бэка
+// Временная страница второго этапа: показывает, что вход и сессия работают.
+// На третьем этапе здесь будут операции за месяц
 export function HomePage() {
-  const health = useQuery({
-    queryKey: ['health'],
+  const me = useQuery({
+    queryKey: ['me'],
     queryFn: async () => {
-      const { data, error } = await api.GET('/health')
+      const { data, error } = await api.GET('/api/v1/auth/me')
       if (error) throw error
       return data
     },
   })
 
   return (
-    <main className="mx-auto max-w-md p-8">
-      <h1 className="text-2xl font-semibold">Учёт финансов</h1>
-      <p className="mt-4 text-muted-foreground">
-        API:{' '}
-        {health.isPending && 'проверяю…'}
-        {health.isError && <span className="text-destructive">недоступно</span>}
-        {health.isSuccess && <span className="text-foreground">{health.data.status}</span>}
+    <main className="mx-auto max-w-2xl px-6 py-10">
+      <header className="flex items-center justify-between border-b border-rule pb-4">
+        <p className="text-lg font-semibold">Книжка</p>
+        <Button variant="outline" onClick={() => void logout()}>
+          Выйти
+        </Button>
+      </header>
+      <p className="mt-8 text-muted-foreground">
+        {me.data ? `Вы вошли как ${me.data.email}` : 'Загрузка…'}
       </p>
     </main>
   )
