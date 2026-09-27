@@ -1,116 +1,161 @@
+import { addDays, daysInclusive, formatDayLong } from '@/lib/dates'
 import { monthShortName, monthTitle } from '@/lib/month'
 import type { OperationKind } from '@/query-client'
 
-import type { MonthlyTotal } from './queries'
+import type { PeriodTotals } from './queries'
 
 /** Ключ серии «Остальное»: мелкие категории вместе, чтобы цвета различались. */
 export const OTHER_KEY = 'other'
 
-// Своих цветов у графика семь: больше на глаз уже не различить.
-// Без красного и зелёного: в книжке это цвета расхода и дохода, а тут
-// категория расходов, покрашенная зелёным, читалась бы как доход
-const PALETTE = ['#2F5D9E', '#D0892E', '#2A8C8C', '#6B4C9A', '#C0587E', '#7D8A2E', '#8C6A4F']
-const OTHER_COLOR = '#B8C4BC'
+// Проверенная категориальная палитра (скрипт validate_palette из скилла dataviz,
+// фон #E9EFE8): различимы и при нарушениях цветового зрения. Без красного
+// и зелёного: в книжке это цвета расхода и дохода, а тут категория
+// расходов, покрашенная зелёным, читалась бы как доход. Порядок фиксирован
+export const PALETTE = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#4a3aa7']
+export const OTHER_COLOR = '#aab5ad'
+
+// Дольше двух месяцев по дням не читается: на телефоне столбики тоньше пикселя
+export const DAILY_MAX_DAYS = 62
+
+export interface RankedCategory {
+  id: number
+  name: string
+  total: number
+  /** Доля в сумме за период, от 0 до 1. */
+  share: number
+  color: string
+}
 
 export interface Series {
   key: string
   name: string
   color: string
-  /** Сумма за весь период. */
-  total: number
-  /** Доля в сумме за период, от 0 до 1. */
-  share: number
-  /** Для «Остального»: какие категории в него вошли. */
-  members?: string[]
 }
 
 export interface BreakdownRow {
   label: string
   title: string
-  /** Сумма месяца по всем категориям этого типа. */
+  /** Сумма столбика по всем категориям этого типа. */
   total: number
   /** Суммы серий: ключ — Series.key. */
   [seriesKey: string]: string | number
 }
 
 export interface Breakdown {
+  /** Все категории типа за период, от большей суммы к меньшей. */
+  categories: RankedCategory[]
   series: Series[]
   rows: BreakdownRow[]
   total: number
+  bucket: 'day' | 'month'
 }
 
 const toKopecks = (value: number) => Math.round(value * 100)
 
+interface Bucket {
+  key: string
+  label: string
+  title: string
+}
+
+/** Столбики графика: каждый день периода или каждый месяц, пустые тоже. */
+function buildBuckets(from: string, to: string): { bucket: 'day' | 'month'; buckets: Bucket[] } {
+  if (daysInclusive(from, to) <= DAILY_MAX_DAYS) {
+    const buckets: Bucket[] = []
+    for (let day = from; day <= to; day = addDays(day, 1)) {
+      const [year, month, dayOfMonth] = day.split('-').map(Number)
+      // Месяц подписываем у первого столбика и там, где он сменился
+      const withMonth = day === from || dayOfMonth === 1
+      buckets.push({
+        key: day,
+        label: withMonth ? `${dayOfMonth} ${monthShortName({ year, month })}` : String(dayOfMonth),
+        title: `${formatDayLong(day)} ${year}`,
+      })
+    }
+    return { bucket: 'day', buckets }
+  }
+
+  const buckets: Bucket[] = []
+  let year = Number(from.slice(0, 4))
+  let month = Number(from.slice(5, 7))
+  const last = to.slice(0, 7)
+  for (;;) {
+    const key = `${year}-${String(month).padStart(2, '0')}`
+    if (key > last) break
+    buckets.push({ key, label: monthShortName({ year, month }), title: monthTitle({ year, month }) })
+    month += 1
+    if (month > 12) {
+      month = 1
+      year += 1
+    }
+  }
+  return { bucket: 'month', buckets }
+}
+
 /**
- * Разбивка месяцев периода по категориям одного типа: для накопительного
- * графика и рейтинга под ним. Все суммы складываются в копейках.
+ * Разбивка периода по категориям одного типа: для накопительного графика
+ * и рейтинга под ним. Все суммы складываются в копейках.
  */
 export function buildBreakdown(
-  totals: MonthlyTotal[],
+  totals: PeriodTotals,
   kind: OperationKind,
-  maxSeries = PALETTE.length,
+  from: string,
+  to: string,
 ): Breakdown {
   const isProfit = kind === 'profit'
+  const ranked = totals.categories
+    .filter((category) => category.is_profit === isProfit)
+    .sort((a, b) => b.sum - a.sum || a.name.localeCompare(b.name, 'ru'))
 
-  // Суммы категорий за весь период: по ним выбираются крупнейшие
-  const periodKopecks = new Map<number, { name: string; kopecks: number }>()
-  for (const month of totals) {
-    for (const category of month.categories) {
-      if (category.is_profit !== isProfit) continue
-      const entry = periodKopecks.get(category.category_id) ?? { name: category.name, kopecks: 0 }
-      entry.kopecks += toKopecks(category.sum)
-      periodKopecks.set(category.category_id, entry)
-    }
-  }
-
-  const ranked = [...periodKopecks.entries()].sort(
-    ([, a], [, b]) => b.kopecks - a.kopecks || a.name.localeCompare(b.name, 'ru'),
-  )
-  // Одну лишнюю категорию в «Остальное» не прячем: серия из одной категории
-  // ничего не упрощает, а название теряется
-  const ownCount = ranked.length > maxSeries + 1 ? maxSeries : ranked.length
-  const own = ranked.slice(0, ownCount)
-  const seriesKeyOf = new Map(own.map(([id]) => [id, `c${id}`]))
-
-  const totalKopecks = ranked.reduce((sum, [, entry]) => sum + entry.kopecks, 0)
-  const otherKopecks = ranked.slice(ownCount).reduce((sum, [, entry]) => sum + entry.kopecks, 0)
+  // Хватает цветов — у каждой категории свой. Не хватает — у крупнейших,
+  // а «Остальное» занимает последний слот серым
+  const ownCount = ranked.length <= PALETTE.length ? ranked.length : PALETTE.length - 1
+  const totalKopecks = ranked.reduce((sum, category) => sum + toKopecks(category.sum), 0)
   const share = (kopecks: number) => (totalKopecks > 0 ? kopecks / totalKopecks : 0)
 
-  const series: Series[] = own.map(([id, entry], index) => ({
-    key: `c${id}`,
-    name: entry.name,
-    color: PALETTE[index],
-    total: entry.kopecks / 100,
-    share: share(entry.kopecks),
-  }))
-  if (otherKopecks > 0) {
-    series.push({
-      key: OTHER_KEY,
-      name: 'Остальное',
-      color: OTHER_COLOR,
-      total: otherKopecks / 100,
-      share: share(otherKopecks),
-      members: ranked.slice(ownCount).map(([, entry]) => entry.name),
-    })
+  const seriesKeyOf = new Map<number, string>()
+  const categories: RankedCategory[] = ranked.map((category, index) => {
+    const own = index < ownCount
+    seriesKeyOf.set(category.category_id, own ? `c${category.category_id}` : OTHER_KEY)
+    return {
+      id: category.category_id,
+      name: category.name,
+      total: category.sum,
+      share: share(toKopecks(category.sum)),
+      color: own ? PALETTE[index] : OTHER_COLOR,
+    }
+  })
+
+  const series: Series[] = categories
+    .slice(0, ownCount)
+    .map((category) => ({ key: `c${category.id}`, name: category.name, color: category.color }))
+  if (ranked.length > ownCount) {
+    series.push({ key: OTHER_KEY, name: 'Остальное', color: OTHER_COLOR })
   }
 
-  const rows = totals.map((month) => {
-    const kopecks: Record<string, number> = Object.fromEntries(series.map((s) => [s.key, 0]))
-    let monthKopecks = 0
-    for (const category of month.categories) {
-      if (category.is_profit !== isProfit) continue
-      const key = seriesKeyOf.get(category.category_id) ?? OTHER_KEY
-      kopecks[key] += toKopecks(category.sum)
-      monthKopecks += toKopecks(category.sum)
-    }
+  const { bucket, buckets } = buildBuckets(from, to)
+  const kopecksByBucket = new Map(
+    buckets.map((b) => [b.key, Object.fromEntries(series.map((s) => [s.key, 0])) as Record<string, number>]),
+  )
+  for (const row of totals.days) {
+    const key = seriesKeyOf.get(row.category_id)
+    // Категория другого типа: в этом графике её нет
+    if (key === undefined) continue
+    const bucketKey = bucket === 'day' ? row.day : row.day.slice(0, 7)
+    const sums = kopecksByBucket.get(bucketKey)
+    if (sums) sums[key] += toKopecks(row.sum)
+  }
+
+  const rows = buckets.map((b) => {
+    const sums = kopecksByBucket.get(b.key)!
     const row: BreakdownRow = {
-      label: monthShortName(month),
-      title: monthTitle(month),
-      total: monthKopecks / 100,
+      label: b.label,
+      title: b.title,
+      total: Object.values(sums).reduce((sum, value) => sum + value, 0) / 100,
     }
-    for (const [key, value] of Object.entries(kopecks)) row[key] = value / 100
+    for (const [key, value] of Object.entries(sums)) row[key] = value / 100
     return row
   })
 
-  return { series, rows, total: totalKopecks / 100 }
+  return { categories, series, rows, total: totalKopecks / 100, bucket }
 }

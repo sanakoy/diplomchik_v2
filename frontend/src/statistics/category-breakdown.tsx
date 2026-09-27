@@ -6,7 +6,7 @@ import type { OperationKind } from '@/query-client'
 import { buildBreakdown } from './breakdown'
 import { CategoryChart } from './category-chart'
 import { CategoryRanking } from './category-ranking'
-import type { MonthlyTotal } from './queries'
+import type { PeriodTotals } from './queries'
 
 const TITLES: Record<OperationKind, string> = {
   spending: 'Расходы по категориям',
@@ -17,14 +17,20 @@ const EMPTY: Record<OperationKind, string> = {
   profit: 'Доходов за этот период нет.',
 }
 
+interface CategoryBreakdownProps {
+  totals: PeriodTotals
+  from: string
+  to: string
+}
+
 /**
- * Куда уходят деньги и откуда приходят: месяцы стопками по категориям
- * и рейтинг категорий за весь период. Расходы и доходы — переключателем:
- * в одном графике их категории смешались бы.
+ * Куда уходят деньги и откуда приходят: столбики по дням (или месяцам)
+ * стопками по категориям и рейтинг категорий. Расходы и доходы —
+ * переключателем: в одном графике их категории смешались бы.
  */
-export function CategoryBreakdown({ totals }: { totals: MonthlyTotal[] }) {
+export function CategoryBreakdown({ totals, from, to }: CategoryBreakdownProps) {
   const [kind, setKind] = useState<OperationKind>('spending')
-  const breakdown = useMemo(() => buildBreakdown(totals, kind), [totals, kind])
+  const breakdown = useMemo(() => buildBreakdown(totals, kind, from, to), [totals, kind, from, to])
 
   return (
     <section aria-labelledby="breakdown-title">
@@ -35,15 +41,18 @@ export function CategoryBreakdown({ totals }: { totals: MonthlyTotal[] }) {
         <KindToggle name="breakdown-kind" value={kind} onChange={setKind} />
       </div>
 
-      {breakdown.series.length === 0 ? (
+      {breakdown.categories.length === 0 ? (
         <p className="mt-5 border-t-2 border-ink py-6 text-muted-foreground">{EMPTY[kind]}</p>
       ) : (
         <>
-          <div className="mt-5">
+          <p className="mt-4 text-sm text-muted-foreground">
+            {breakdown.bucket === 'day' ? 'По дням' : 'По месяцам'}
+          </p>
+          <div className="mt-2">
             <CategoryChart breakdown={breakdown} />
           </div>
           <div className="mt-6">
-            <CategoryRanking series={breakdown.series} />
+            <CategoryRanking categories={breakdown.categories} />
           </div>
         </>
       )}

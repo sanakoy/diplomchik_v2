@@ -1,15 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildBreakdown, OTHER_KEY } from './breakdown'
-import type { MonthlyTotal } from './queries'
+import { buildBreakdown, OTHER_COLOR, OTHER_KEY, PALETTE } from './breakdown'
+import type { PeriodTotals } from './queries'
 
-function month(
-  monthNumber: number,
-  categories: Array<[id: number, name: string, sum: number, isProfit?: boolean]>,
-): MonthlyTotal {
+type CategoryInput = [id: number, name: string, sum: number, isProfit?: boolean]
+type DayInput = [day: string, categoryId: number, sum: number]
+
+function totals(categories: CategoryInput[], days: DayInput[] = []): PeriodTotals {
   return {
-    year: 2026,
-    month: monthNumber,
     income: 0,
     expense: 0,
     categories: categories.map(([id, name, sum, isProfit = false]) => ({
@@ -18,75 +16,100 @@ function month(
       sum,
       is_profit: isProfit,
     })),
+    days: days.map(([day, categoryId, sum]) => ({ day, category_id: categoryId, sum })),
   }
 }
 
 describe('buildBreakdown', () => {
-  it('раскладывает месяцы по категориям нужного типа', () => {
-    const totals = [
-      month(8, [
+  it('раскладывает дни периода по категориям нужного типа', () => {
+    const data = totals(
+      [
         [1, 'Продукты', 300],
-        [2, 'Кафе', 100],
+        [2, 'Кафе', 700],
         [9, 'Зарплата', 5000, true],
-      ]),
-      month(9, [[2, 'Кафе', 600]]),
-    ]
+      ],
+      [
+        ['2026-09-01', 1, 300],
+        ['2026-09-01', 2, 100],
+        ['2026-09-01', 9, 5000],
+        ['2026-09-03', 2, 600],
+      ],
+    )
 
-    const { series, rows, total } = buildBreakdown(totals, 'spending')
+    const breakdown = buildBreakdown(data, 'spending', '2026-09-01', '2026-09-03')
 
-    // Порядок серий — по сумме за период: Кафе 700 больше Продуктов 300
-    expect(series.map((s) => [s.name, s.total, s.share])).toEqual([
-      ['Кафе', 700, 0.7],
-      ['Продукты', 300, 0.3],
+    // Рейтинг от большей суммы к меньшей, цвета — в фиксированном порядке палитры
+    expect(breakdown.categories.map((c) => [c.name, c.total, c.share, c.color])).toEqual([
+      ['Кафе', 700, 0.7, PALETTE[0]],
+      ['Продукты', 300, 0.3, PALETTE[1]],
     ])
-    expect(total).toBe(1000)
-    expect(rows[0]).toMatchObject({ label: 'авг', total: 400, c1: 300, c2: 100 })
-    // Категория без операций в месяце — ноль, а не пропуск: иначе стопка съедет
-    expect(rows[1]).toMatchObject({ label: 'сен', total: 600, c1: 0, c2: 600 })
+    expect(breakdown.total).toBe(1000)
+    expect(breakdown.bucket).toBe('day')
+    // Каждый день периода — столбик, день без записей тоже: иначе шкала времени соврёт
+    expect(breakdown.rows.map((row) => [row.label, row.total, row.c1, row.c2])).toEqual([
+      ['1 сен', 400, 300, 100],
+      ['2', 0, 0, 0],
+      ['3', 600, 0, 600],
+    ])
+    expect(breakdown.rows[0].title).toBe('1 сентября 2026')
   })
 
-  it('мелкие категории сверх лимита собирает в «Остальное»', () => {
-    const totals = [
-      month(9, [
-        [1, 'А', 50],
-        [2, 'Б', 40],
-        [3, 'В', 3],
-        [4, 'Г', 2],
-      ]),
-    ]
+  it('подписывает месяц там, где он сменился', () => {
+    const breakdown = buildBreakdown(totals([]), 'spending', '2026-08-30', '2026-09-02')
 
-    const { series, rows } = buildBreakdown(totals, 'spending', 2)
-
-    expect(series.map((s) => s.name)).toEqual(['А', 'Б', 'Остальное'])
-    expect(series[2].members).toEqual(['В', 'Г'])
-    expect(rows[0][OTHER_KEY]).toBe(5)
+    expect(breakdown.rows.map((row) => row.label)).toEqual(['30 авг', '31', '1 сен', '2'])
   })
 
-  it('одну лишнюю категорию в «Остальное» не прячет', () => {
-    const totals = [
-      month(9, [
-        [1, 'А', 50],
-        [2, 'Б', 40],
-        [3, 'В', 3],
-      ]),
-    ]
+  it('длинный период группирует по месяцам', () => {
+    const data = totals(
+      [[1, 'Кафе', 30]],
+      [
+        ['2025-12-31', 1, 10],
+        ['2026-01-01', 1, 5],
+        ['2026-01-20', 1, 15],
+      ],
+    )
 
-    const { series } = buildBreakdown(totals, 'spending', 2)
+    const breakdown = buildBreakdown(data, 'spending', '2025-12-01', '2026-02-10')
 
-    expect(series.map((s) => s.name)).toEqual(['А', 'Б', 'В'])
+    expect(breakdown.bucket).toBe('month')
+    expect(breakdown.rows.map((row) => [row.label, row.title, row.total])).toEqual([
+      ['дек', 'Декабрь 2025', 10],
+      ['янв', 'Январь 2026', 20],
+      ['фев', 'Февраль 2026', 0],
+    ])
+  })
+
+  it('когда цветов не хватает, мелкие категории уходят в «Остальное»', () => {
+    const categories: CategoryInput[] = [7, 6, 5, 4, 3, 2, 1].map((n) => [n, `К${n}`, n * 10])
+    const data = totals(categories, [
+      ['2026-09-01', 2, 20],
+      ['2026-09-01', 1, 10],
+    ])
+
+    const breakdown = buildBreakdown(data, 'spending', '2026-09-01', '2026-09-01')
+
+    // Семь категорий на шесть цветов: пять своих и «Остальное»
+    expect(breakdown.series.map((s) => s.name)).toEqual(['К7', 'К6', 'К5', 'К4', 'К3', 'Остальное'])
+    expect(breakdown.categories.slice(5).map((c) => c.color)).toEqual([OTHER_COLOR, OTHER_COLOR])
+    expect(breakdown.rows[0][OTHER_KEY]).toBe(30)
+  })
+
+  it('шесть категорий помещаются без «Остального»', () => {
+    const categories: CategoryInput[] = [6, 5, 4, 3, 2, 1].map((n) => [n, `К${n}`, n])
+
+    const breakdown = buildBreakdown(totals(categories), 'spending', '2026-09-01', '2026-09-01')
+
+    expect(breakdown.series).toHaveLength(6)
+    expect(breakdown.series.some((s) => s.key === OTHER_KEY)).toBe(false)
   })
 
   it('складывает в копейках', () => {
-    const totals = [month(8, [[1, 'Кафе', 0.1]]), month(9, [[1, 'Кафе', 0.2]])]
+    const data = totals([
+      [1, 'А', 0.1],
+      [2, 'Б', 0.2],
+    ])
 
-    expect(buildBreakdown(totals, 'spending').total).toBe(0.3)
-  })
-
-  it('пустой период: ни серий, ни долей', () => {
-    const { series, total, rows } = buildBreakdown([month(9, [])], 'profit')
-
-    expect(series).toEqual([])
-    expect(total).toBe(0)
-    expect(rows[0].total).toBe(0)
+    expect(buildBreakdown(data, 'spending', '2026-09-01', '2026-09-01').total).toBe(0.3)
   })
 })

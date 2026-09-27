@@ -6,9 +6,11 @@ import { currentMonth, isSameMonth, monthTitle, shiftMonth, type YearMonth } fro
 interface MonthSwitcherProps {
   month: YearMonth
   onChange: (month: YearMonth) => void
+  /** Уровень заголовка: в книжке месяц — главный заголовок, в статистике — нет. */
+  titleAs?: 'h1' | 'h2'
 }
 
-export function MonthSwitcher({ month, onChange }: MonthSwitcherProps) {
+export function MonthSwitcher({ month, onChange, titleAs: Title = 'h1' }: MonthSwitcherProps) {
   const today = currentMonth()
 
   return (
@@ -23,12 +25,12 @@ export function MonthSwitcher({ month, onChange }: MonthSwitcherProps) {
           <ChevronLeft />
         </Button>
         {/* aria-live: скринридер прочитает новый месяц после переключения */}
-        <h1
+        <Title
           aria-live="polite"
           className="min-w-[9.5ch] text-center text-2xl font-semibold tracking-tight sm:text-3xl"
         >
           {monthTitle(month)}
-        </h1>
+        </Title>
         <Button
           variant="ghost"
           size="icon-lg"

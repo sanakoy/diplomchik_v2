@@ -65,7 +65,7 @@ export function CategoryChart({ breakdown }: { breakdown: Breakdown }) {
   )
 
   return (
-    // Сам график скринридеру не читаем: те же суммы есть в рейтинге и таблице
+    // Сам график скринридеру не читаем: те же суммы есть в рейтинге под ним
     <ChartContainer config={config} className="aspect-auto h-72 w-full" aria-hidden="true">
       <BarChart data={breakdown.rows} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
         <CartesianGrid vertical={false} stroke="var(--rule)" />
@@ -87,15 +87,19 @@ export function CategoryChart({ breakdown }: { breakdown: Breakdown }) {
           cursor={{ fill: 'var(--rule)', opacity: 0.35 }}
           content={<BreakdownTooltip series={breakdown.series} />}
         />
-        {/* Крупные категории внизу стопки: их проще сравнивать между месяцами.
-            Без анимации роста: движение в интерфейсе одно — штамп «Проведено»,
-            а анимация Recharts не учитывает prefers-reduced-motion */}
+        {/* Крупные категории внизу стопки: их проще сравнивать между столбиками.
+            Обводка цветом фона — зазор 2px между частями стопки: без него
+            соседние цвета сливаются. Без анимации роста: движение в интерфейсе
+            одно — штамп «Проведено», а анимация Recharts не учитывает
+            prefers-reduced-motion */}
         {breakdown.series.map((s) => (
           <Bar
             key={s.key}
             dataKey={s.key}
-            stackId="month"
+            stackId="period"
             fill={s.color}
+            stroke="var(--paper)"
+            strokeWidth={2}
             isAnimationActive={false}
           />
         ))}

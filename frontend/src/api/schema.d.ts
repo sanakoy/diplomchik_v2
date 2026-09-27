@@ -254,15 +254,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/operations/monthly-totals": {
+    "/api/v1/operations/totals": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Доходы и расходы по месяцам для статистики */
-        get: operations["get_monthly_totals_api_v1_operations_monthly_totals_get"];
+        /** Доходы и расходы за период по категориям и дням */
+        get: operations["get_period_totals_api_v1_operations_totals_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -410,6 +410,18 @@ export interface components {
              */
             date: string;
         };
+        /** DayCategoryTotal */
+        DayCategoryTotal: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Category Id */
+            category_id: number;
+            /** Sum */
+            sum: number;
+        };
         /** GroupedOperationResponse */
         GroupedOperationResponse: {
             /** Grouped Operations */
@@ -452,24 +464,6 @@ export interface components {
             /** Password */
             password: string;
         };
-        /** MonthlyTotal */
-        MonthlyTotal: {
-            /** Year */
-            year: number;
-            /** Month */
-            month: number;
-            /** Income */
-            income: number;
-            /** Expense */
-            expense: number;
-            /** Categories */
-            categories: components["schemas"]["CategoryTotal"][];
-        };
-        /** MonthlyTotalsResponse */
-        MonthlyTotalsResponse: {
-            /** Data */
-            data: components["schemas"]["MonthlyTotal"][];
-        };
         /** OperationInGroup */
         OperationInGroup: {
             /** Id */
@@ -506,6 +500,17 @@ export interface components {
         OperationsPage: {
             /** Data */
             data: components["schemas"]["OperationView"][];
+        };
+        /** PeriodTotalsResponse */
+        PeriodTotalsResponse: {
+            /** Income */
+            income: number;
+            /** Expense */
+            expense: number;
+            /** Categories */
+            categories: components["schemas"]["CategoryTotal"][];
+            /** Days */
+            days: components["schemas"]["DayCategoryTotal"][];
         };
         /** RegisterRequest */
         RegisterRequest: {
@@ -996,12 +1001,11 @@ export interface operations {
             };
         };
     };
-    get_monthly_totals_api_v1_operations_monthly_totals_get: {
+    get_period_totals_api_v1_operations_totals_get: {
         parameters: {
-            query?: {
-                year?: number | null;
-                month?: number | null;
-                months?: number;
+            query: {
+                date_from: string;
+                date_to: string;
             };
             header?: never;
             path?: never;
@@ -1015,7 +1019,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MonthlyTotalsResponse"];
+                    "application/json": components["schemas"]["PeriodTotalsResponse"];
                 };
             };
             /** @description Validation Error */
