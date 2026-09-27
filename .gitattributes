@@ -1,0 +1,8 @@
+# Git сам определяет текстовые файлы и хранит их в репозитории с LF
+* text=auto
+
+# Скрипты выполняются в Linux-контейнере: CRLF ломает строку #!/bin/sh,
+# и контейнер падает с «no such file or directory». Поэтому LF всегда,
+# даже при core.autocrlf=true на Windows
+*.sh text eol=lf
+Dockerfile text eol=lf
