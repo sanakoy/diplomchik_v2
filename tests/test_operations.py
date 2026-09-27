@@ -217,6 +217,34 @@ async def test_create_operation_validation(client, create_user, json):
     assert response.status_code == 422
 
 
+@pytest.mark.parametrize(
+    "extra",
+    [{"sum": 0}, {"sum": -250}, {"comment": "к" * 101}],
+)
+async def test_create_operation_invalid_values(
+    client, create_user, create_category, extra
+):
+    user = await create_user()
+    category = await create_category(user)
+    valid = {"sum": 250, "category_id": category.id, "date": "2026-09-17T15:30:00"}
+
+    response = await client.post(
+        "/api/v1/operations/create", json=valid | extra, headers=auth_headers(user)
+    )
+
+    assert response.status_code == 422
+    assert await get_month_total(client, user, 2026, 9) == 0
+    # Контроль: без некорректного поля та же операция создаётся,
+    # комментарий ровно в 100 символов допустим
+    response = await client.post(
+        "/api/v1/operations/create",
+        json=valid | {"comment": "к" * 100},
+        headers=auth_headers(user),
+    )
+    assert response.status_code == 200
+    assert await get_month_total(client, user, 2026, 9) == 250
+
+
 async def test_create_operation_in_nonexistent_category(
     client, create_user, create_category
 ):
@@ -337,8 +365,18 @@ async def test_update_operation_cannot_change_category(
     assert (await get_obj(Operation, operation.id)).category_id == old_category.id
 
 
-async def test_update_operation_sum_to_zero(
-    client, create_user, create_category, create_operation
+@pytest.mark.parametrize(
+    "json",
+    [
+        {"sum": 0},
+        {"sum": -100},
+        # null записал бы NULL в NOT NULL колонку: раньше это был 500
+        {"sum": None},
+        {"comment": "к" * 101},
+    ],
+)
+async def test_update_operation_invalid_values(
+    client, create_user, create_category, create_operation, json
 ):
     user = await create_user()
     category = await create_category(user)
@@ -346,12 +384,20 @@ async def test_update_operation_sum_to_zero(
 
     response = await client.patch(
         f"/api/v1/operations/update/{operation.id}",
-        json={"sum": 0},
+        json=json,
         headers=auth_headers(user),
     )
 
+    assert response.status_code == 422
+    assert await get_month_total(client, user, 2026, 9) == 100
+    # Контроль: корректное значение того же поля принимается
+    response = await client.patch(
+        f"/api/v1/operations/update/{operation.id}",
+        json={"sum": 50, "comment": "к" * 100},
+        headers=auth_headers(user),
+    )
     assert response.status_code == 200
-    assert await get_month_total(client, user, 2026, 9) == 0
+    assert await get_month_total(client, user, 2026, 9) == 50
 
 
 async def test_update_nonexistent_operation(

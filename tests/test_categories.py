@@ -326,6 +326,57 @@ async def test_create_category_without_image(client, create_user):
     assert category.image_url is None
 
 
+@pytest.mark.parametrize(
+    "json",
+    [
+        {"name": "к" * 81, "operation": "spending"},
+        {"name": "   ", "operation": "spending"},
+        # Раньше любое значение, кроме "profit", молча давало категорию расходов
+        {"name": "Кафе", "operation": "abc"},
+    ],
+)
+async def test_create_category_invalid_values(client, create_user, json):
+    user = await create_user()
+
+    response = await client.post(
+        "/api/v1/categories/create", json=json, headers=auth_headers(user)
+    )
+
+    assert response.status_code == 422
+    # Контроль: корректная категория создаётся, пробелы по краям имени обрезаются
+    response = await client.post(
+        "/api/v1/categories/create",
+        json={"name": "  " + "к" * 80 + "  ", "operation": "spending"},
+        headers=auth_headers(user),
+    )
+    assert response.status_code == 200
+    category = await get_obj(Category, response.json()["cr_category_id"])
+    assert category.name == "к" * 80
+
+
+@pytest.mark.parametrize("name", [None, "", "   ", "к" * 81])
+async def test_update_category_invalid_name(client, create_user, create_category, name):
+    user = await create_user()
+    category = await create_category(user, name="Старое")
+
+    response = await client.patch(
+        f"/api/v1/categories/update/{category.id}",
+        json={"name": name},
+        headers=auth_headers(user),
+    )
+
+    assert response.status_code == 422
+    assert (await get_obj(Category, category.id)).name == "Старое"
+    # Контроль: корректное имя принимается
+    response = await client.patch(
+        f"/api/v1/categories/update/{category.id}",
+        json={"name": "Новое"},
+        headers=auth_headers(user),
+    )
+    assert response.status_code == 200
+    assert (await get_obj(Category, category.id)).name == "Новое"
+
+
 @pytest.mark.parametrize("json", [{"operation": "spending"}, {"name": "Без типа"}, {}])
 async def test_create_category_validation(client, create_user, json):
     user = await create_user()

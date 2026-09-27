@@ -1,8 +1,15 @@
 from datetime import datetime
+from typing import Annotated, Any, Literal
 
-from pydantic import ConfigDict, Field, model_validator
+from pydantic import ConfigDict, Field, StringConstraints, model_validator
 
-from src.schemas import BaseSchema
+from src.schemas import BaseSchema, reject_explicit_nulls
+
+# Длина совпадает с колонкой category.name: без ограничения длинное имя
+# доходило до БД и падало с 500 вместо 422
+CategoryName = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)
+]
 
 
 class CategoryView(BaseSchema):
@@ -48,9 +55,10 @@ class GroupedOperationResponse(BaseSchema):
 
 
 class CreateCategoryRequest(BaseSchema):
-    name: str
+    name: CategoryName
     image_url: str | None = None
-    operation: str = Field(exclude=True)
+    # Literal, а не str: любое значение, кроме "profit", раньше молча давало расход
+    operation: Literal["profit", "spending"] = Field(exclude=True)
     is_profit: bool | None = None
 
     @model_validator(mode="after")
@@ -64,5 +72,10 @@ class UpdateCategoryRequest(BaseSchema):
     # extra="forbid": лишние поля вернут 422, а не будут молча проигнорированы
     model_config = ConfigDict(from_attributes=True, extra="forbid")
 
-    name: str | None = None
+    name: CategoryName | None = None
     image_url: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def check_nulls(cls, data: Any) -> Any:
+        return reject_explicit_nulls(data, ("name",))

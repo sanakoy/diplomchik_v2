@@ -1,14 +1,19 @@
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import ConfigDict
+from pydantic import ConfigDict, Field, StringConstraints, model_validator
 
-from src.schemas import BaseSchema, MonthFilter
+from src.schemas import BaseSchema, MonthFilter, reject_explicit_nulls
+
+# Сумма всегда положительная: доход это или расход, решает тип категории
+OperationSum = Annotated[float, Field(gt=0)]
+# Длина совпадает с колонкой operation.comment
+OperationComment = Annotated[str, StringConstraints(max_length=100)]
 
 
 class CreateOperationRequest(BaseSchema):
-    sum: float
-    comment: str | None = None
+    sum: OperationSum
+    comment: OperationComment | None = None
     category_id: int
     date: datetime
 
@@ -18,9 +23,14 @@ class UpdateOperationRequest(BaseSchema):
     # extra="forbid": попытка прислать category_id вернёт 422, а не будет молча проигнорирована
     model_config = ConfigDict(from_attributes=True, extra="forbid")
 
-    sum: float | None = None
-    comment: str | None = None
+    sum: OperationSum | None = None
+    comment: OperationComment | None = None
     date: datetime | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def check_nulls(cls, data: Any) -> Any:
+        return reject_explicit_nulls(data, ("sum",))
 
 
 class OperationListParams(MonthFilter):
