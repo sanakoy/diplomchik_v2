@@ -20,6 +20,26 @@ const MONTH_NAMES = [
   'декабрь',
 ]
 
+// Для подписей оси графика: «сен», «май». Без точек: так их пишут в календарях
+const MONTH_SHORT_NAMES = [
+  'янв',
+  'фев',
+  'мар',
+  'апр',
+  'май',
+  'июн',
+  'июл',
+  'авг',
+  'сен',
+  'окт',
+  'ноя',
+  'дек',
+]
+
+export function monthShortName({ month }: YearMonth): string {
+  return MONTH_SHORT_NAMES[month - 1]
+}
+
 export function currentMonth(now = new Date()): YearMonth {
   return { year: now.getFullYear(), month: now.getMonth() + 1 }
 }

@@ -254,6 +254,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operations/monthly-totals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Доходы и расходы по месяцам для статистики */
+        get: operations["get_monthly_totals_api_v1_operations_monthly_totals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operations/create": {
         parameters: {
             query?: never;
@@ -339,6 +356,17 @@ export interface components {
         CategoryPageResponse: {
             data: components["schemas"]["CategoriesPage"];
         };
+        /** CategoryTotal */
+        CategoryTotal: {
+            /** Category Id */
+            category_id: number;
+            /** Name */
+            name: string;
+            /** Is Profit */
+            is_profit: boolean;
+            /** Sum */
+            sum: number;
+        };
         /** CategoryView */
         CategoryView: {
             /** Id */
@@ -423,6 +451,24 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+        };
+        /** MonthlyTotal */
+        MonthlyTotal: {
+            /** Year */
+            year: number;
+            /** Month */
+            month: number;
+            /** Income */
+            income: number;
+            /** Expense */
+            expense: number;
+            /** Categories */
+            categories: components["schemas"]["CategoryTotal"][];
+        };
+        /** MonthlyTotalsResponse */
+        MonthlyTotalsResponse: {
+            /** Data */
+            data: components["schemas"]["MonthlyTotal"][];
         };
         /** OperationInGroup */
         OperationInGroup: {
@@ -937,6 +983,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OperationsPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_monthly_totals_api_v1_operations_monthly_totals_get: {
+        parameters: {
+            query?: {
+                year?: number | null;
+                month?: number | null;
+                months?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonthlyTotalsResponse"];
                 };
             };
             /** @description Validation Error */

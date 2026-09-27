@@ -22,6 +22,8 @@ export const queryKeys = {
   categories: ['categories'] as const,
   monthCategories: (kind: OperationKind, { year, month }: YearMonth) =>
     ['categories', kind, year, month] as const,
+  // Под префиксом operations: статистика считается по записям и сбрасывается вместе с ними
+  monthlyTotals: (months: number) => ['operations', 'monthly-totals', months] as const,
 }
 
 /**

@@ -43,7 +43,10 @@ export function LedgerPage() {
 
       <div className="mt-6">
         {operations.data ? (
-          <MonthSummary month={month} summary={summarize(operations.data)} />
+          <MonthSummary
+            netLabel={`Итог за ${monthName(month)}`}
+            summary={summarize(operations.data)}
+          />
         ) : (
           // Место под итоги занято заранее, чтобы форма не прыгала после загрузки
           <div className="h-[8.5rem] border-y-[3px] border-double border-ink sm:h-[6.25rem]" />
