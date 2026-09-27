@@ -25,7 +25,13 @@ from src.database import Base
 target_metadata = Base.metadata
 
 from src.settings import settings
-config.set_main_option("sqlalchemy.url", settings.get_db_url)
+# render_as_string(hide_password=False): str(URL) заменяет пароль на ***.
+# Удвоение %: конфиг Alembic построен на configparser, где % — подстановка,
+# а экранированный пароль содержит %XX
+config.set_main_option(
+    "sqlalchemy.url",
+    settings.get_db_url.render_as_string(hide_password=False).replace("%", "%%"),
+)
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")

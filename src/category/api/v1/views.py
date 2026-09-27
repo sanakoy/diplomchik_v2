@@ -36,7 +36,9 @@ async def get_profit_categories(
     return CategoryPageResponse(data=category_page_data)
 
 
-@category.get("/statistic")
+@category.get(
+    "/statistic", summary="Статистика за месяц: операции по дням и суммы по категориям"
+)
 async def get_statistic(
     operation: str,
     year: int,

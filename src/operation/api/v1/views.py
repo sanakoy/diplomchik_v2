@@ -24,7 +24,7 @@ async def get_operations(
     return await service.get_operations(auth_user, params)
 
 
-@operation.post("/create")
+@operation.post("/create", summary="Создание операции")
 async def create_operation(
     data: CreateOperationRequest,
     service: OperationService = Depends(get_operation_service),
@@ -34,7 +34,7 @@ async def create_operation(
     return {"message": "Операция успешно создана"}
 
 
-@operation.patch("/update/{operation_id}")
+@operation.patch("/update/{operation_id}", summary="Обновление операции")
 async def update_operation(
     operation_id: int,
     data: UpdateOperationRequest,
@@ -45,7 +45,7 @@ async def update_operation(
     return {"message": "Операция успешно обновлена"}
 
 
-@operation.delete("/delete/{operation_id}")
+@operation.delete("/delete/{operation_id}", summary="Удаление операции")
 async def delete_operation(
     operation_id: int,
     service: OperationService = Depends(get_operation_service),

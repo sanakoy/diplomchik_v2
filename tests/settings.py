@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import URL
 
 from src.settings import ENV_PATH
 
@@ -19,10 +20,14 @@ class TestSettings(BaseSettings):
     TEST_REDIS_URL: str = "redis://127.0.0.1:6379/1"
 
     @property
-    def get_db_test_url(self) -> str:
-        return (
-            f"postgresql+asyncpg://{self.TEST_DB_USER}:{self.TEST_DB_PASSWORD}@"
-            f"{self.TEST_DB_HOST}:{self.TEST_DB_PORT}/{self.TEST_DB_NAME}"
+    def get_db_test_url(self) -> URL:
+        return URL.create(
+            drivername="postgresql+asyncpg",
+            username=self.TEST_DB_USER,
+            password=self.TEST_DB_PASSWORD,
+            host=self.TEST_DB_HOST,
+            port=self.TEST_DB_PORT,
+            database=self.TEST_DB_NAME,
         )
 
     model_config = SettingsConfigDict(
