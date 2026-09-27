@@ -1,5 +1,6 @@
 import { useRef, useState, type FormEvent } from 'react'
 
+import { isConflict } from '@/api/errors'
 import { FormField } from '@/components/form-field'
 import { KindToggle } from '@/components/kind-toggle'
 import { Button } from '@/components/ui/button'
@@ -47,7 +48,15 @@ export function NewCategoryForm() {
           // Категории часто заводят подряд: фокус остаётся в поле названия
           nameRef.current?.focus()
         },
-        onError: () => setFormError('Не удалось добавить категорию. Попробуйте ещё раз.'),
+        onError: (mutationError) => {
+          // Проверка выше смотрит на загруженный список, а бэк — на всю БД:
+          // дубль мог появиться, например, из другой вкладки
+          if (isConflict(mutationError)) {
+            setError(`Категория «${trimmed}» уже есть в ${KIND_GROUP[kind]}.`)
+          } else {
+            setFormError('Не удалось добавить категорию. Попробуйте ещё раз.')
+          }
+        },
       },
     )
   }

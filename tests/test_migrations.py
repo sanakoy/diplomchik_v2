@@ -5,8 +5,9 @@ from alembic.migration import MigrationContext
 from alembic.script import ScriptDirectory
 
 import src  # noqa: F401 — регистрирует все модели в Base.metadata
+from src.category.models import Category
 from src.database import Base
-from tests.utils import TEST_ENGINE, run_alembic
+from tests.utils import TEST_ENGINE, get_obj, run_alembic
 
 
 def get_revisions() -> list[str]:
@@ -42,3 +43,32 @@ async def test_migrations_stairway():
         ]:
             async with TEST_ENGINE.begin() as conn:
                 await conn.run_sync(run_alembic, alembic_command, target)
+
+
+async def test_unique_category_name_migration_renames_duplicates(
+    create_user, create_category
+):
+    # Схема до индекса уникальности: дубли там ещё можно создать
+    async with TEST_ENGINE.begin() as conn:
+        await conn.run_sync(run_alembic, command.downgrade, "b50b4d255fab")
+    try:
+        user = await create_user()
+        first = await create_category(user, name="Кафе")
+        duplicate = await create_category(user, name="кафе")
+        long_duplicate_base = await create_category(user, name="к" * 80)
+        long_duplicate = await create_category(user, name="К" * 80)
+        # Не дубли: другой тип и другой пользователь
+        profit = await create_category(user, name="Кафе", is_profit=True)
+        other_user = await create_category(await create_user(), name="Кафе")
+    finally:
+        async with TEST_ENGINE.begin() as conn:
+            await conn.run_sync(run_alembic, command.upgrade, "head")
+
+    assert (await get_obj(Category, first.id)).name == "Кафе"
+    assert (await get_obj(Category, duplicate.id)).name == f"кафе ({duplicate.id})"
+    assert (await get_obj(Category, long_duplicate_base.id)).name == "к" * 80
+    renamed = (await get_obj(Category, long_duplicate.id)).name
+    # Суффикс не выводит имя за пределы колонки String(80)
+    assert renamed == "К" * 60 + f" ({long_duplicate.id})"
+    assert (await get_obj(Category, profit.id)).name == "Кафе"
+    assert (await get_obj(Category, other_user.id)).name == "Кафе"

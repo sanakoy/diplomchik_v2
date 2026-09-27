@@ -3,11 +3,12 @@ from datetime import datetime
 
 from fastapi import Depends, HTTPException
 from sqlalchemy import and_, extract, func, select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from src.auth.schemas import UserToken
-from src.category.models import Category
+from src.category.models import CATEGORY_NAME_UNIQUE_INDEX, Category
 from src.category.schemas import (
     CategoriesPage,
     CategoryView,
@@ -19,6 +20,15 @@ from src.category.schemas import (
 from src.database import get_session
 from src.operation.models import Operation
 from src.schemas import MonthFilter
+
+
+def violates_unique_name(error: IntegrityError) -> bool:
+    """Нарушен ли именно индекс уникальности имени, а не другое ограничение.
+
+    asyncpg кладёт исходную ошибку в __cause__, у неё есть имя ограничения.
+    """
+    cause = error.orig.__cause__ if error.orig is not None else None
+    return getattr(cause, "constraint_name", None) == CATEGORY_NAME_UNIQUE_INDEX
 
 
 class CategoryService:
@@ -184,8 +194,20 @@ class CategoryService:
             **create_data.model_dump(exclude_unset=True), user_id=auth_user.id
         )
         self.session.add(category)
-        await self.session.commit()
+        await self.commit_name_change()
         return category
+
+    async def commit_name_change(self) -> None:
+        """commit, где дубль имени превращается в 409 вместо 500."""
+        try:
+            await self.session.commit()
+        except IntegrityError as error:
+            await self.session.rollback()
+            if violates_unique_name(error):
+                raise HTTPException(
+                    status_code=409, detail="Категория с таким названием уже есть"
+                ) from error
+            raise
 
     async def get_own_category(
         self, category_id: int, auth_user: UserToken
@@ -212,7 +234,7 @@ class CategoryService:
 
         for field, value in update_data.model_dump(exclude_unset=True).items():
             setattr(category, field, value)
-        await self.session.commit()
+        await self.commit_name_change()
         return category
 
     async def delete_category(self, category_id: int, auth_user: UserToken) -> Category:

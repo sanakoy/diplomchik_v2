@@ -12,6 +12,11 @@ export function isNotFound(error: unknown): boolean {
   return error instanceof ApiError && error.status === 404
 }
 
+/** 409: запись конфликтует с существующей, например имя категории уже занято. */
+export function isConflict(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 409
+}
+
 /** Бросает ApiError, если ответ неуспешный: для мутаций, где тело ответа не нужно. */
 export function ensureOk(response: Response): void {
   if (!response.ok) throw new ApiError(response.status)

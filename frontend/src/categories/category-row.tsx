@@ -1,7 +1,7 @@
 import { Pencil, Trash2 } from 'lucide-react'
 import { useRef, useState, type FormEvent, type KeyboardEvent, type RefObject } from 'react'
 
-import { isNotFound } from '@/api/errors'
+import { isConflict, isNotFound } from '@/api/errors'
 import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
@@ -110,9 +110,11 @@ function RenameForm({
         onSuccess: onDone,
         onError: (mutationError) =>
           setError(
-            isNotFound(mutationError)
-              ? 'Категория не найдена: возможно, её уже удалили.'
-              : 'Не удалось переименовать. Попробуйте ещё раз.',
+            isConflict(mutationError)
+              ? 'Категория с таким названием уже есть.'
+              : isNotFound(mutationError)
+                ? 'Категория не найдена: возможно, её уже удалили.'
+                : 'Не удалось переименовать. Попробуйте ещё раз.',
           ),
       },
     )

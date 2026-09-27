@@ -326,6 +326,69 @@ async def test_create_category_without_image(client, create_user):
     assert category.image_url is None
 
 
+@pytest.mark.parametrize("name", ["Кафе", "кафе", "  КАФЕ  "])
+async def test_create_category_duplicate_name(
+    client, create_user, create_category, name
+):
+    user = await create_user()
+    await create_category(user, name="Кафе", is_profit=False)
+
+    response = await client.post(
+        "/api/v1/categories/create",
+        json={"name": name, "operation": "spending"},
+        headers=auth_headers(user),
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {"detail": "Категория с таким названием уже есть"}
+    # Контроль: то же имя в доходах — не дубль, у каждого типа свои имена
+    response = await client.post(
+        "/api/v1/categories/create",
+        json={"name": name, "operation": "profit"},
+        headers=auth_headers(user),
+    )
+    assert response.status_code == 200
+
+
+async def test_same_category_name_for_different_users(
+    client, create_user, create_category
+):
+    other_user = await create_user()
+    await create_category(other_user, name="Кафе")
+    user = await create_user()
+
+    response = await client.post(
+        "/api/v1/categories/create",
+        json={"name": "Кафе", "operation": "spending"},
+        headers=auth_headers(user),
+    )
+
+    assert response.status_code == 200
+
+
+async def test_rename_category_to_existing_name(client, create_user, create_category):
+    user = await create_user()
+    await create_category(user, name="Кафе")
+    food = await create_category(user, name="Продукты")
+
+    response = await client.patch(
+        f"/api/v1/categories/update/{food.id}",
+        json={"name": "КАФЕ"},
+        headers=auth_headers(user),
+    )
+
+    assert response.status_code == 409
+    assert (await get_obj(Category, food.id)).name == "Продукты"
+    # Контроль: смена регистра в собственном имени — не конфликт с самой собой
+    response = await client.patch(
+        f"/api/v1/categories/update/{food.id}",
+        json={"name": "ПРОДУКТЫ"},
+        headers=auth_headers(user),
+    )
+    assert response.status_code == 200
+    assert (await get_obj(Category, food.id)).name == "ПРОДУКТЫ"
+
+
 @pytest.mark.parametrize(
     "json",
     [
