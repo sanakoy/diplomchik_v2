@@ -57,7 +57,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Вывод категорий расходов */
+        /** Категории расходов с суммами за месяц */
         get: operations["get_spending_categories_api_v1_categories_spending_get"];
         put?: never;
         post?: never;
@@ -74,7 +74,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Вывод категорий доходов */
+        /** Категории доходов с суммами за месяц */
         get: operations["get_profit_categories_api_v1_categories_profit_get"];
         put?: never;
         post?: never;
@@ -91,7 +91,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Statistic */
+        /** Статистика за месяц: операции по дням и суммы по категориям */
         get: operations["get_statistic_api_v1_categories_statistic_get"];
         put?: never;
         post?: never;
@@ -263,7 +263,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create Operation */
+        /** Создание операции */
         post: operations["create_operation_api_v1_operations_create_post"];
         delete?: never;
         options?: never;
@@ -284,7 +284,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Update Operation */
+        /** Обновление операции */
         patch: operations["update_operation_api_v1_operations_update__operation_id__patch"];
         trace?: never;
     };
@@ -298,7 +298,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Delete Operation */
+        /** Удаление операции */
         delete: operations["delete_operation_api_v1_operations_delete__operation_id__delete"];
         options?: never;
         head?: never;
@@ -318,6 +318,41 @@ export interface components {
              * @default Bearer
              */
             token_type: string;
+        };
+        /** CategoriesPage */
+        CategoriesPage: {
+            /** Cats */
+            cats: components["schemas"]["CategoryView"][];
+            /**
+             * Total
+             * @default 0
+             */
+            total: number | null;
+            /** Operation */
+            operation: string;
+            /** Cats Sum */
+            cats_sum: {
+                [key: string]: number;
+            };
+        };
+        /** CategoryPageResponse */
+        CategoryPageResponse: {
+            data: components["schemas"]["CategoriesPage"];
+        };
+        /** CategoryView */
+        CategoryView: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Cat Sum */
+            cat_sum?: number | null;
+            /** Is Profit */
+            is_profit: boolean;
+            /** Image Url */
+            image_url?: string | null;
+            /** User Id */
+            user_id: number;
         };
         /** CreateCategoryRequest */
         CreateCategoryRequest: {
@@ -531,7 +566,10 @@ export interface operations {
     };
     get_spending_categories_api_v1_categories_spending_get: {
         parameters: {
-            query?: never;
+            query?: {
+                year?: number | null;
+                month?: number | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -544,14 +582,26 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["CategoryPageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
     };
     get_profit_categories_api_v1_categories_profit_get: {
         parameters: {
-            query?: never;
+            query?: {
+                year?: number | null;
+                month?: number | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -564,7 +614,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["CategoryPageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

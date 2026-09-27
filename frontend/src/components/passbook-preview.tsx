@@ -24,7 +24,7 @@ export function PassbookPreview() {
           <tr className="border-b-2 border-ink text-left text-sm text-muted-foreground">
             <th className="w-16 pb-2 font-normal">Дата</th>
             <th className="pb-2 font-normal">Запись</th>
-            <th className="pb-2 text-right font-normal">Приход</th>
+            <th className="pb-2 text-right font-normal">Доход</th>
             <th className="pb-2 text-right font-normal">Расход</th>
           </tr>
         </thead>

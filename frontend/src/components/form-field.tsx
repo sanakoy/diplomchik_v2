@@ -16,7 +16,8 @@ export function FormField({ id, label, hint, error, ...inputProps }: FormFieldPr
   const errorId = error ? `${id}-error` : undefined
 
   return (
-    <div className="grid gap-2">
+    // content-start: в ряду с соседом повыше поле не растягивается, а держится у подписи
+    <div className="grid content-start gap-2">
       <Label htmlFor={id}>{label}</Label>
       <Input
         id={id}
