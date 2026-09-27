@@ -1,8 +1,8 @@
-from datetime import datetime
+from datetime import datetime, time, timedelta
 from decimal import Decimal
 
 from fastapi import Depends, HTTPException
-from sqlalchemy import extract, func, select
+from sqlalchemy import Date, cast, extract, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import contains_eager
 
@@ -13,12 +13,12 @@ from src.operation.models import Operation
 from src.operation.schemas import (
     CategoryTotal,
     CreateOperationRequest,
-    MonthlyTotal,
-    MonthlyTotalsParams,
-    MonthlyTotalsResponse,
+    DayCategoryTotal,
     OperationListParams,
     OperationsPage,
     OperationView,
+    PeriodParams,
+    PeriodTotalsResponse,
     UpdateOperationRequest,
 )
 
@@ -64,34 +64,19 @@ class OperationService:
             ],
         )
 
-    async def get_monthly_totals(
-        self, auth_user: UserToken, params: MonthlyTotalsParams
-    ) -> MonthlyTotalsResponse:
-        now = datetime.now()
-        last_year = params.year if params.year is not None else now.year
-        last_month = params.month if params.month is not None else now.month
+    async def get_period_totals(
+        self, auth_user: UserToken, params: PeriodParams
+    ) -> PeriodTotalsResponse:
+        # Диапазон по самой колонке, а не extract()/cast в WHERE: так условие
+        # сможет использовать индекс по operation.date, если он появится.
+        # Конец — начало следующего дня: последний день входит целиком
+        date_from = datetime.combine(params.date_from, time.min)
+        date_to = datetime.combine(params.date_to + timedelta(days=1), time.min)
 
-        # Месяцы периода как номера «год * 12 + месяц - 1»: так сдвиг через
-        # границу года — обычное вычитание
-        last_index = last_year * 12 + last_month - 1
-        indexes = range(last_index - params.months + 1, last_index + 1)
-        periods = [(index // 12, index % 12 + 1) for index in indexes]
-
-        # Диапазон дат, а не extract() в WHERE: условие по самой колонке
-        # сможет использовать индекс по operation.date, если он появится
-        first_year, first_month = periods[0]
-        next_year, next_month = divmod(last_index + 1, 12)
-        date_from = datetime(first_year, first_month, 1)
-        date_to = datetime(next_year, next_month + 1, 1)
-
-        year = extract("year", Operation.date)
-        month = extract("month", Operation.date)
-        # Сумма по каждой категории в каждом месяце; доход и расход месяца —
-        # это суммы этих строк, отдельный запрос для них не нужен
+        day = cast(Operation.date, Date)
         totals_query = (
             select(
-                year,
-                month,
+                day,
                 Category.id,
                 Category.name,
                 Category.is_profit,
@@ -103,42 +88,46 @@ class OperationService:
                 Operation.date >= date_from,
                 Operation.date < date_to,
             )
-            .group_by(year, month, Category.id, Category.name, Category.is_profit)
+            .group_by(day, Category.id, Category.name, Category.is_profit)
+            .order_by(day, Category.id)
         )
         rows = (await self.session.execute(totals_query)).all()
 
-        by_month: dict[tuple[int, int], list[CategoryTotal]] = {}
-        # Итоги копим в Decimal, как они хранятся в БД: во float сумма
+        # Суммы копим в Decimal, как они хранятся в БД: во float сумма
         # многих дробных значений накапливает ошибку
-        income: dict[tuple[int, int], Decimal] = {}
-        expense: dict[tuple[int, int], Decimal] = {}
-        for row_year, row_month, category_id, name, is_profit, total in rows:
-            key = (int(row_year), int(row_month))
-            by_month.setdefault(key, []).append(
-                CategoryTotal(
-                    category_id=category_id,
-                    name=name,
-                    is_profit=is_profit,
-                    sum=float(total),
-                )
+        category_sums: dict[int, Decimal] = {}
+        category_info: dict[int, tuple[str, bool]] = {}
+        income = expense = Decimal(0)
+        days = []
+        for row_day, category_id, name, is_profit, total in rows:
+            days.append(
+                DayCategoryTotal(day=row_day, category_id=category_id, sum=float(total))
             )
-            target = income if is_profit else expense
-            target[key] = target.get(key, Decimal(0)) + total
+            category_sums[category_id] = (
+                category_sums.get(category_id, Decimal(0)) + total
+            )
+            category_info[category_id] = (name, is_profit)
+            if is_profit:
+                income += total
+            else:
+                expense += total
 
-        return MonthlyTotalsResponse(
-            data=[
-                MonthlyTotal(
-                    year=key[0],
-                    month=key[1],
-                    income=float(income.get(key, 0)),
-                    expense=float(expense.get(key, 0)),
-                    categories=sorted(
-                        by_month.get(key, []),
-                        key=lambda category: (-category.sum, category.name),
-                    ),
-                )
-                for key in periods
-            ]
+        categories = [
+            CategoryTotal(
+                category_id=category_id,
+                name=category_info[category_id][0],
+                is_profit=category_info[category_id][1],
+                sum=float(total),
+            )
+            for category_id, total in category_sums.items()
+        ]
+        categories.sort(key=lambda category: (-category.sum, category.name))
+
+        return PeriodTotalsResponse(
+            income=float(income),
+            expense=float(expense),
+            categories=categories,
+            days=days,
         )
 
     async def get_own_operation(

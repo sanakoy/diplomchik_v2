@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Any, Literal
 
 from pydantic import ConfigDict, Field, StringConstraints, model_validator
@@ -38,10 +38,23 @@ class OperationListParams(MonthFilter):
     operation: Literal["profit", "spending"] | None = None
 
 
-class MonthlyTotalsParams(MonthFilter):
-    """Период для статистики: months месяцев, последний — year/month (по умолчанию текущий)."""
+# Длиннее года статистика по дням не нужна, а запрос остаётся ограниченным
+PERIOD_MAX_DAYS = 366
 
-    months: int = Field(default=12, ge=1, le=36)
+
+class PeriodParams(BaseSchema):
+    """Период статистики: с date_from по date_to включительно."""
+
+    date_from: date
+    date_to: date
+
+    @model_validator(mode="after")
+    def check_period(self) -> "PeriodParams":
+        if self.date_from > self.date_to:
+            raise ValueError("date_from позже date_to")
+        if (self.date_to - self.date_from).days + 1 > PERIOD_MAX_DAYS:
+            raise ValueError(f"период длиннее {PERIOD_MAX_DAYS} дней")
+        return self
 
 
 class CategoryTotal(BaseSchema):
@@ -51,18 +64,19 @@ class CategoryTotal(BaseSchema):
     sum: float
 
 
-class MonthlyTotal(BaseSchema):
-    year: int
-    month: int
+class DayCategoryTotal(BaseSchema):
+    day: date
+    category_id: int
+    sum: float
+
+
+class PeriodTotalsResponse(BaseSchema):
     income: float
     expense: float
-    # Категории с операциями в этом месяце, от большей суммы к меньшей
+    # Категории с операциями за период, от большей суммы к меньшей
     categories: list[CategoryTotal]
-
-
-class MonthlyTotalsResponse(BaseSchema):
-    # От старых месяцев к новым; месяцы без операций тоже есть, с нулями
-    data: list[MonthlyTotal]
+    # Суммы категорий по дням для графика: только дни с операциями, по порядку
+    days: list[DayCategoryTotal]
 
 
 class OperationView(BaseSchema):
