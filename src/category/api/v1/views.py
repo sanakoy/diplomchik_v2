@@ -8,7 +8,6 @@ from src.category.schemas import (
     CategoriesPage,
     CategoryPageResponse,
     CreateCategoryRequest,
-    GroupedOperationResponse,
     UpdateCategoryRequest,
 )
 from src.category.service import CategoryService, get_category_service
@@ -39,19 +38,6 @@ async def get_profit_categories(
         auth_user=auth_user, is_profit=True, period=period
     )
     return CategoryPageResponse(data=category_page_data)
-
-
-@category.get(
-    "/statistic", summary="Статистика за месяц: операции по дням и суммы по категориям"
-)
-async def get_statistic(
-    operation: str,
-    year: int,
-    month: int,
-    service: CategoryService = Depends(get_category_service),
-    auth_user: UserToken = Depends(get_current_user_by_access_token),
-) -> GroupedOperationResponse:
-    return await service.get_statistic(auth_user, operation, year, month)
 
 
 @category.post("/create", summary="Создание категории")

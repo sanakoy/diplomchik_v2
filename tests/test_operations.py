@@ -1,4 +1,5 @@
-from datetime import datetime
+import calendar
+from datetime import date, datetime
 
 import pytest
 
@@ -10,12 +11,18 @@ async def get_month_total(
     client, user, year: int, month: int, operation: str = "spending"
 ) -> float:
     """Сумма за месяц так, как её видит пользователь: считается по операциям."""
+    last_day = calendar.monthrange(year, month)[1]
     response = await client.get(
-        "/api/v1/categories/statistic",
-        params={"operation": operation, "year": year, "month": month},
+        "/api/v1/operations/totals",
+        params={
+            "date_from": date(year, month, 1).isoformat(),
+            "date_to": date(year, month, last_day).isoformat(),
+        },
         headers=auth_headers(user),
     )
-    return response.json()["total"]
+    assert response.status_code == 200
+    data = response.json()
+    return data["income"] if operation == "profit" else data["expense"]
 
 
 # ---------- GET /operations ----------

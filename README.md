@@ -83,7 +83,7 @@ npm run gen:api    # типы API из OpenAPI бэкенда в src/api/schema.
 ### Тесты и проверки
 
 ```bash
-uv run pytest                    # 175 тестов против настоящих PostgreSQL и Redis
+uv run pytest                    # 168 тестов против настоящих PostgreSQL и Redis
 uv run ruff check src tests      # линтер
 uv run black --check src tests   # форматирование
 uv run mypy                      # типы

@@ -84,23 +84,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/categories/statistic": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** ���������� �� �����: �������� �� ���� � ����� �� ���������� */
-        get: operations["get_statistic_api_v1_categories_statistic_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/categories/create": {
         parameters: {
             query?: never;
@@ -422,33 +405,6 @@ export interface components {
             /** Sum */
             sum: number;
         };
-        /** GroupedOperationResponse */
-        GroupedOperationResponse: {
-            /** Grouped Operations */
-            grouped_operations: {
-                [key: string]: components["schemas"]["OperationInGroup"][];
-            };
-            /** Operation */
-            operation: string;
-            /** Month */
-            month: number;
-            /** Year */
-            year: number;
-            /** Current Month */
-            current_month?: number;
-            /** Current Year */
-            current_year?: number;
-            /** Cats Sum */
-            cats_sum: {
-                [key: string]: number;
-            };
-            /** Total */
-            total: number;
-            /** Months Year */
-            months_year: {
-                [key: string]: number[];
-            };
-        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -463,19 +419,6 @@ export interface components {
             email: string;
             /** Password */
             password: string;
-        };
-        /** OperationInGroup */
-        OperationInGroup: {
-            /** Id */
-            id: number;
-            /** Sum */
-            sum: number;
-            /** Comment */
-            comment?: string | null;
-            /** Cat Name */
-            cat_name: string;
-            /** Icon */
-            icon: string | null;
         };
         /** OperationView */
         OperationView: {
@@ -669,39 +612,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CategoryPageResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_statistic_api_v1_categories_statistic_get: {
-        parameters: {
-            query: {
-                operation: string;
-                year: number;
-                month: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GroupedOperationResponse"];
                 };
             };
             /** @description Validation Error */
