@@ -3,7 +3,6 @@ import { createBrowserRouter, Navigate } from 'react-router'
 import { GuestOnly, RequireAuth } from '@/auth/guards'
 import { AppLayout } from '@/components/app-layout'
 import { RouteError } from '@/components/route-error'
-import { CategoriesPage } from '@/pages/categories-page'
 import { LedgerPage } from '@/pages/ledger-page'
 import { LoginPage } from '@/pages/login-page'
 import { RegisterPage } from '@/pages/register-page'
@@ -33,7 +32,6 @@ export const router = createBrowserRouter([
                 errorElement: <RouteError />,
                 children: [
                   { path: '/', element: <LedgerPage /> },
-                  { path: '/categories', element: <CategoriesPage /> },
                   {
                     path: '/statistics',
                     // Отдельный чанк: Recharts нужен только здесь, остальные

@@ -1,5 +1,6 @@
 import { Pencil } from 'lucide-react'
 
+import { CategoryIcon } from '@/categories/icons'
 import { Button } from '@/components/ui/button'
 import { formatAmount, formatDayMonth, formatSignedAmount } from '@/lib/format'
 
@@ -13,7 +14,7 @@ interface LedgerTableProps {
 export function LedgerTable({ operations, onEdit }: LedgerTableProps) {
   return (
     <table className="w-full border-collapse text-[15px]">
-      <caption className="sr-only">Записи за месяц, новые сверху</caption>
+      <caption className="sr-only">Записи, новые сверху</caption>
       <thead>
         <tr className="border-b-2 border-ink text-left text-sm text-muted-foreground">
           <th scope="col" className="w-16 pb-2 font-normal">
@@ -44,12 +45,20 @@ export function LedgerTable({ operations, onEdit }: LedgerTableProps) {
               {operation.date ? formatDayMonth(operation.date) : '—'}
             </td>
             <td className="py-3 pr-3">
-              <div>{operation.cat_name}</div>
-              {operation.comment && (
-                <div className="mt-0.5 text-sm break-words text-muted-foreground">
-                  {operation.comment}
+              <div className="flex gap-2.5">
+                <CategoryIcon
+                  category={{ icon: operation.icon, name: operation.cat_name }}
+                  className="mt-0.5 size-4.5 shrink-0 text-muted-foreground"
+                />
+                <div className="min-w-0">
+                  <div>{operation.cat_name}</div>
+                  {operation.comment && (
+                    <div className="mt-0.5 text-sm break-words text-muted-foreground">
+                      {operation.comment}
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </td>
             <td
               className={`amount py-3 text-right whitespace-nowrap sm:hidden ${operation.is_profit ? 'text-income' : 'text-expense'}`}

@@ -1,7 +1,7 @@
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 
 import { ChartContainer, ChartTooltip, type ChartConfig } from '@/components/ui/chart'
-import { formatAmount } from '@/lib/format'
+import { formatAmount, formatPercent } from '@/lib/format'
 
 import type { Breakdown, BreakdownRow, Series } from './breakdown'
 
@@ -9,11 +9,6 @@ import type { Breakdown, BreakdownRow, Series } from './breakdown'
 const axisFormatter = new Intl.NumberFormat('ru-RU', {
   notation: 'compact',
   maximumFractionDigits: 1,
-})
-
-export const percentFormatter = new Intl.NumberFormat('ru-RU', {
-  style: 'percent',
-  maximumFractionDigits: 0,
 })
 
 interface TooltipProps {
@@ -45,7 +40,7 @@ function BreakdownTooltip({ active, payload, series }: TooltipProps) {
               <span className="min-w-0 truncate text-muted-foreground">{item.name}</span>
               <span className="amount ml-auto pl-3 font-medium">{formatAmount(item.value)}</span>
               <span className="amount w-9 text-right text-muted-foreground">
-                {percentFormatter.format(item.value / row.total)}
+                {formatPercent(item.value / row.total)}
               </span>
             </li>
           ))}

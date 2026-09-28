@@ -1,5 +1,6 @@
 import { addDays, daysInclusive, formatDayLong } from '@/lib/dates'
 import { monthShortName, monthTitle } from '@/lib/month'
+import { OTHER_COLOR, PALETTE, rankedColors } from '@/lib/palette'
 import type { OperationKind } from '@/query-client'
 
 import type { PeriodTotals } from './queries'
@@ -7,12 +8,7 @@ import type { PeriodTotals } from './queries'
 /** Ключ серии «Остальное»: мелкие категории вместе, чтобы цвета различались. */
 export const OTHER_KEY = 'other'
 
-// Проверенная категориальная палитра (скрипт validate_palette из скилла dataviz,
-// фон #E9EFE8): различимы и при нарушениях цветового зрения. Без красного
-// и зелёного: в книжке это цвета расхода и дохода, а тут категория
-// расходов, покрашенная зелёным, читалась бы как доход. Порядок фиксирован
-export const PALETTE = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#4a3aa7']
-export const OTHER_COLOR = '#aab5ad'
+export { OTHER_COLOR, PALETTE }
 
 // Дольше двух месяцев по дням не читается: на телефоне столбики тоньше пикселя
 export const DAILY_MAX_DAYS = 62
@@ -107,9 +103,8 @@ export function buildBreakdown(
     .filter((category) => category.is_profit === isProfit)
     .sort((a, b) => b.sum - a.sum || a.name.localeCompare(b.name, 'ru'))
 
-  // Хватает цветов — у каждой категории свой. Не хватает — у крупнейших,
-  // а «Остальное» занимает последний слот серым
-  const ownCount = ranked.length <= PALETTE.length ? ranked.length : PALETTE.length - 1
+  const colors = rankedColors(ranked.length)
+  const ownCount = colors.filter((color) => color !== OTHER_COLOR).length
   const totalKopecks = ranked.reduce((sum, category) => sum + toKopecks(category.sum), 0)
   const share = (kopecks: number) => (totalKopecks > 0 ? kopecks / totalKopecks : 0)
 
@@ -122,7 +117,7 @@ export function buildBreakdown(
       name: category.name,
       total: category.sum,
       share: share(toKopecks(category.sum)),
-      color: own ? PALETTE[index] : OTHER_COLOR,
+      color: colors[index],
     }
   })
 

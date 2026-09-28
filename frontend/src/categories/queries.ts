@@ -31,9 +31,9 @@ export function useCategories(kind: OperationKind, month: YearMonth) {
 
 export function useCreateCategory() {
   return useMutation({
-    mutationFn: async ({ name, kind }: { name: string; kind: OperationKind }) => {
+    mutationFn: async ({ name, kind, icon }: { name: string; kind: OperationKind; icon: string }) => {
       const { response } = await api.POST('/api/v1/categories/create', {
-        body: { name, operation: kind },
+        body: { name, operation: kind, icon },
       })
       ensureOk(response)
     },
@@ -41,12 +41,13 @@ export function useCreateCategory() {
   })
 }
 
-export function useRenameCategory() {
+/** Изменение категории: имя и иконка одним запросом. */
+export function useUpdateCategory() {
   return useMutation({
-    mutationFn: async ({ id, name }: { id: number; name: string }) => {
+    mutationFn: async ({ id, name, icon }: { id: number; name: string; icon: string }) => {
       const { response } = await api.PATCH('/api/v1/categories/update/{category_id}', {
         params: { path: { category_id: id } },
-        body: { name },
+        body: { name, icon },
       })
       ensureOk(response)
     },

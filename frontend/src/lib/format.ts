@@ -8,6 +8,27 @@ export function formatAmount(value: number): string {
   return amountFormatter.format(value)
 }
 
+const rublesFormatter = new Intl.NumberFormat('ru-RU', {
+  style: 'currency',
+  currency: 'RUB',
+  maximumFractionDigits: 0,
+})
+
+/** 1500.5 → «1 501 ₽»: целые рубли, где копейки не помещаются (плитки категорий). */
+export function formatRubles(value: number): string {
+  return rublesFormatter.format(value)
+}
+
+const percentFormatter = new Intl.NumberFormat('ru-RU', {
+  style: 'percent',
+  maximumFractionDigits: 0,
+})
+
+/** Доля 0.4271 → «43 %» (с неразрывным пробелом, как принято в русском). */
+export function formatPercent(share: number): string {
+  return percentFormatter.format(share)
+}
+
 /** Сумма со знаком: «+85 000,00», «−2 350,00». Ноль без знака. */
 export function formatSignedAmount(value: number): string {
   if (value > 0) return `+${formatAmount(value)}`

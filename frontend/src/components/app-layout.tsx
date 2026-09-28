@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Записи' },
-  { to: '/categories', label: 'Категории' },
   { to: '/statistics', label: 'Статистика' },
 ]
 

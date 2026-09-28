@@ -1,10 +1,14 @@
+import { useState } from 'react'
 import { useSearchParams } from 'react-router'
 
 import { Segmented } from '@/components/segmented'
 import { Button } from '@/components/ui/button'
 import { monthRange } from '@/lib/dates'
+import { LedgerTable } from '@/operations/ledger-table'
 import { MonthSummary } from '@/operations/month-summary'
 import { MonthSwitcher } from '@/operations/month-switcher'
+import { OperationEditDialog } from '@/operations/operation-edit-dialog'
+import { usePeriodOperations, type Operation } from '@/operations/queries'
 import { CategoryBreakdown } from '@/statistics/category-breakdown'
 import { DateRangePicker } from '@/statistics/date-range-picker'
 import {
@@ -34,6 +38,9 @@ export function StatisticsPage() {
   const period = parsePeriod(searchParams)
   const { from, to } = periodDates(period)
   const totals = usePeriodTotals(from, to)
+  const operations = usePeriodOperations(from, to)
+  // Запись, открытая в диалоге изменения; null — диалог закрыт
+  const [editing, setEditing] = useState<Operation | null>(null)
 
   function showPeriod(next: Period) {
     setSearchParams(periodToParams(next))
@@ -105,6 +112,39 @@ export function StatisticsPage() {
           </div>
         </div>
       )}
+
+      <section aria-labelledby="operations-title" className="mt-12">
+        <h2 id="operations-title" className="text-lg font-semibold">
+          Записи
+        </h2>
+        <div className="mt-4">
+          {operations.isError ? (
+            <div className="border-t-2 border-ink py-6 text-sm">
+              <p className="text-expense">Не удалось загрузить записи.</p>
+              <Button variant="outline" className="mt-3" onClick={() => void operations.refetch()}>
+                Повторить
+              </Button>
+            </div>
+          ) : operations.data === undefined ? (
+            <p className="border-t-2 border-ink py-6 text-sm text-muted-foreground">Загрузка…</p>
+          ) : operations.data.length === 0 ? (
+            <p className="border-t-2 border-ink py-6 text-muted-foreground">За этот период записей нет.</p>
+          ) : (
+            // Пока грузится другой период, старые строки видны, но приглушены
+            <div className={operations.isPlaceholderData ? 'opacity-50 transition-opacity' : ''}>
+              <LedgerTable operations={operations.data} onEdit={setEditing} />
+            </div>
+          )}
+        </div>
+      </section>
+
+      <OperationEditDialog
+        operation={editing}
+        onClose={() => setEditing(null)}
+        // Период выбран здесь явно: переносить его вслед за записью незачем,
+        // список сам обновится после сохранения
+        onSaved={() => {}}
+      />
     </main>
   )
 }

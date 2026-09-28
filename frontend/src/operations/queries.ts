@@ -26,6 +26,21 @@ export function useMonthOperations(month: YearMonth) {
   })
 }
 
+/** Записи за период, даты включительно: список в статистике. */
+export function usePeriodOperations(from: string, to: string) {
+  return useQuery({
+    queryKey: queryKeys.periodOperations(from, to),
+    queryFn: async () => {
+      const { data } = await api.GET('/api/v1/operations', {
+        params: { query: { date_from: from, date_to: to } },
+      })
+      if (!data) throw new Error('Не удалось загрузить операции')
+      return data.data
+    },
+    placeholderData: keepPreviousData,
+  })
+}
+
 export function useCreateOperation() {
   return useMutation({
     mutationFn: async (body: NewOperation) => {

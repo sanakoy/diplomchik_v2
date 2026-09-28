@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { formatDayMonth } from '@/lib/format'
+import { useConfirmStep } from '@/lib/use-confirm-step'
 import { refreshLedger } from '@/query-client'
 
 import { useDeleteOperation, useUpdateOperation, type Operation, type OperationChanges } from './queries'
@@ -78,7 +79,7 @@ function EditOperationForm({
   const [errors, setErrors] = useState<OperationFieldErrors>({})
   const [formError, setFormError] = useState<string | null>(null)
   // Удаление в два шага: первая кнопка только спрашивает подтверждение
-  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const deleteStep = useConfirmStep()
 
   const update = useUpdateOperation()
   const remove = useDeleteOperation()
@@ -180,7 +181,7 @@ function EditOperationForm({
       </div>
 
       <div className="mt-3 border-t border-rule pt-4">
-        {confirmingDelete ? (
+        {deleteStep.confirming ? (
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="font-medium">Удалить запись? Отменить это нельзя.</p>
             <div className="flex gap-2">
@@ -188,8 +189,9 @@ function EditOperationForm({
                 type="button"
                 variant="outline"
                 size="lg"
+                ref={deleteStep.keepRef}
                 disabled={busy}
-                onClick={() => setConfirmingDelete(false)}
+                onClick={deleteStep.cancel}
               >
                 Не удалять
               </Button>
@@ -211,8 +213,9 @@ function EditOperationForm({
               variant="ghost"
               size="lg"
               className="-ml-2.5 text-expense hover:bg-expense/10 hover:text-expense"
+              ref={deleteStep.askRef}
               disabled={busy}
-              onClick={() => setConfirmingDelete(true)}
+              onClick={deleteStep.ask}
             >
               Удалить запись
             </Button>

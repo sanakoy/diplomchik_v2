@@ -12,12 +12,12 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Жив ли процесс
-         * @description Проверка без обращения к БД и Redis.
+         * ��� �� �������
+         * @description �������� ��� ��������� � �� � Redis.
          *
-         *     По ней оркестратор решает, не завис ли процесс и не пора ли его перезапустить.
-         *     Если бы она ходила в БД, недоступная база приводила бы к бесконечным
-         *     перезапускам приложения, которое само по себе исправно.
+         *     �� ��� ����������� ������, �� ����� �� ������� � �� ���� �� ��� �������������.
+         *     ���� �� ��� ������ � ��, ����������� ���� ��������� �� � �����������
+         *     ������������ ����������, ������� ���� �� ���� ��������.
          */
         get: operations["liveness_health_get"];
         put?: never;
@@ -36,10 +36,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Готов ли обслуживать запросы
-         * @description Проверка зависимостей: БД и Redis.
+         * ����� �� ����������� �������
+         * @description �������� ������������: �� � Redis.
          *
-         *     По ней балансировщик решает, слать ли на этот экземпляр трафик.
+         *     �� ��� ������������� ������, ����� �� �� ���� ��������� ������.
          */
         get: operations["readiness_ready_get"];
         put?: never;
@@ -57,7 +57,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Категории расходов с суммами за месяц */
+        /** ��������� �������� � ������� �� ����� */
         get: operations["get_spending_categories_api_v1_categories_spending_get"];
         put?: never;
         post?: never;
@@ -74,7 +74,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Категории доходов с суммами за месяц */
+        /** ��������� ������� � ������� �� ����� */
         get: operations["get_profit_categories_api_v1_categories_profit_get"];
         put?: never;
         post?: never;
@@ -91,7 +91,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Статистика за месяц: операции по дням и суммы по категориям */
+        /** ���������� �� �����: �������� �� ���� � ����� �� ���������� */
         get: operations["get_statistic_api_v1_categories_statistic_get"];
         put?: never;
         post?: never;
@@ -110,7 +110,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Создание категории */
+        /** �������� ��������� */
         post: operations["create_category_api_v1_categories_create_post"];
         delete?: never;
         options?: never;
@@ -131,7 +131,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Обновление категории */
+        /** ���������� ��������� */
         patch: operations["update_category_api_v1_categories_update__category_id__patch"];
         trace?: never;
     };
@@ -145,7 +145,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Удаление категории */
+        /** �������� ��������� */
         delete: operations["delete_category_api_v1_categories_delete__category_id__delete"];
         options?: never;
         head?: never;
@@ -161,7 +161,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Регистрация по email и паролю */
+        /** ����������� �� email � ������ */
         post: operations["register_api_v1_auth_register_post"];
         delete?: never;
         options?: never;
@@ -178,7 +178,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Вход: access-токен в теле ответа, refresh-токен в httpOnly cookie */
+        /** ����: access-����� � ���� ������, refresh-����� � httpOnly cookie */
         post: operations["login_api_v1_auth_login_post"];
         delete?: never;
         options?: never;
@@ -195,7 +195,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Новый access-токен по refresh-токену из cookie, refresh ротируется */
+        /** ����� access-����� �� refresh-������ �� cookie, refresh ���������� */
         post: operations["refresh_api_v1_auth_refresh_post"];
         delete?: never;
         options?: never;
@@ -212,7 +212,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Выход: refresh-токен отзывается, cookie удаляется */
+        /** �����: refresh-����� ����������, cookie ��������� */
         post: operations["logout_api_v1_auth_logout_post"];
         delete?: never;
         options?: never;
@@ -227,7 +227,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Текущий пользователь */
+        /** ������� ������������ */
         get: operations["me_api_v1_auth_me_get"];
         put?: never;
         post?: never;
@@ -244,7 +244,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Список операций с фильтрами */
+        /** ������ �������� � ��������� */
         get: operations["get_operations_api_v1_operations_get"];
         put?: never;
         post?: never;
@@ -261,7 +261,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Доходы и расходы за период по категориям и дням */
+        /** ������ � ������� �� ������ �� ���������� � ���� */
         get: operations["get_period_totals_api_v1_operations_totals_get"];
         put?: never;
         post?: never;
@@ -280,7 +280,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Создание операции */
+        /** �������� �������� */
         post: operations["create_operation_api_v1_operations_create_post"];
         delete?: never;
         options?: never;
@@ -301,7 +301,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Обновление операции */
+        /** ���������� �������� */
         patch: operations["update_operation_api_v1_operations_update__operation_id__patch"];
         trace?: never;
     };
@@ -315,7 +315,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Удаление операции */
+        /** �������� �������� */
         delete: operations["delete_operation_api_v1_operations_delete__operation_id__delete"];
         options?: never;
         head?: never;
@@ -377,8 +377,8 @@ export interface components {
             cat_sum?: number | null;
             /** Is Profit */
             is_profit: boolean;
-            /** Image Url */
-            image_url?: string | null;
+            /** Icon */
+            icon?: string | null;
             /** User Id */
             user_id: number;
         };
@@ -386,8 +386,8 @@ export interface components {
         CreateCategoryRequest: {
             /** Name */
             name: string;
-            /** Image Url */
-            image_url?: string | null;
+            /** Icon */
+            icon?: string | null;
             /**
              * Operation
              * @enum {string}
@@ -474,8 +474,8 @@ export interface components {
             comment?: string | null;
             /** Cat Name */
             cat_name: string;
-            /** Image Url */
-            image_url: string | null;
+            /** Icon */
+            icon: string | null;
         };
         /** OperationView */
         OperationView: {
@@ -491,8 +491,8 @@ export interface components {
             category_id: number;
             /** Cat Name */
             cat_name: string;
-            /** Image Url */
-            image_url?: string | null;
+            /** Icon */
+            icon?: string | null;
             /** Is Profit */
             is_profit: boolean;
         };
@@ -526,8 +526,8 @@ export interface components {
         UpdateCategoryRequest: {
             /** Name */
             name?: string | null;
-            /** Image Url */
-            image_url?: string | null;
+            /** Icon */
+            icon?: string | null;
         };
         /** UpdateOperationRequest */
         UpdateOperationRequest: {
@@ -609,7 +609,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description Зависимости недоступны */
+            /** @description ����������� ���������� */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -878,7 +878,7 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description Слишком много попыток входа */
+            /** @description ������� ����� ������� ����� */
             429: {
                 headers: {
                     [name: string]: unknown;
@@ -974,6 +974,8 @@ export interface operations {
                 month?: number | null;
                 category_id?: number | null;
                 operation?: ("profit" | "spending") | null;
+                date_from?: string | null;
+                date_to?: string | null;
             };
             header?: never;
             path?: never;

@@ -144,7 +144,7 @@
 }
 
 /* Тот же штамп после записи: ложится, держится и гаснет. Длительность совпадает
-   со STAMP_VISIBLE_MS в operation-form.tsx, после неё элемент убирается из DOM */
+   со STAMP_VISIBLE_MS в ledger-page.tsx, после неё элемент убирается из DOM */
 @keyframes stamp-flash {
     0% {
         opacity: 0;
@@ -184,4 +184,13 @@
         transform: rotate(-6deg);
         animation: fade-out 2000ms linear both;
     }
+}
+
+/* Radix, открывая меню или диалог, блокирует прокрутку и компенсирует
+   исчезнувшую полосу отступом у body. Но место под полосу и так всегда
+   занято (scrollbar-gutter: stable выше), и компенсация сдвигала страницу
+   на ширину полосы. Вне @layer и со специфичностью выше, чем у стиля,
+   который вставляет react-remove-scroll-bar */
+html body[data-scroll-locked] {
+    margin-right: 0 !important;
 }

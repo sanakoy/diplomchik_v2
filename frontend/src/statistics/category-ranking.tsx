@@ -1,7 +1,6 @@
-import { formatAmount } from '@/lib/format'
+import { formatAmount, formatPercent } from '@/lib/format'
 
 import { OTHER_COLOR, type RankedCategory } from './breakdown'
-import { percentFormatter } from './category-chart'
 
 /**
  * Все категории периода от большей суммы к меньшей: легенда графика и его
@@ -26,7 +25,7 @@ export function CategoryRanking({ categories }: { categories: RankedCategory[] }
               <span className="min-w-0 break-words">{category.name}</span>
               <span className="amount ml-auto whitespace-nowrap">{formatAmount(category.total)}</span>
               <span className="amount w-10 text-right text-sm text-muted-foreground">
-                {percentFormatter.format(category.share)}
+                {formatPercent(category.share)}
               </span>
             </div>
           </li>
