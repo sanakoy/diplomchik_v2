@@ -34,6 +34,15 @@ class OperationService:
         if params.year is not None:
             filters.append(extract("year", Operation.date) == params.year)
             filters.append(extract("month", Operation.date) == params.month)
+        if params.date_from is not None and params.date_to is not None:
+            # Как в get_period_totals: конец — начало следующего дня
+            filters.append(
+                Operation.date >= datetime.combine(params.date_from, time.min)
+            )
+            filters.append(
+                Operation.date
+                < datetime.combine(params.date_to + timedelta(days=1), time.min)
+            )
         if params.category_id:
             filters.append(Operation.category_id == params.category_id)
         if params.operation:

@@ -33,13 +33,35 @@ class UpdateOperationRequest(BaseSchema):
         return reject_explicit_nulls(data, ("sum",))
 
 
+# Длиннее года ни статистика, ни список записей не нужны, а запрос
+# остаётся ограниченным
+PERIOD_MAX_DAYS = 366
+
+
+def check_period(date_from: date, date_to: date) -> None:
+    if date_from > date_to:
+        raise ValueError("date_from позже date_to")
+    if (date_to - date_from).days + 1 > PERIOD_MAX_DAYS:
+        raise ValueError(f"период длиннее {PERIOD_MAX_DAYS} дней")
+
+
 class OperationListParams(MonthFilter):
     category_id: int | None = None
     operation: Literal["profit", "spending"] | None = None
+    # Произвольный период, включительно: для списка записей в статистике.
+    # Либо он, либо year/month — два фильтра по дате сразу были бы двусмысленны
+    date_from: date | None = None
+    date_to: date | None = None
 
-
-# Длиннее года статистика по дням не нужна, а запрос остаётся ограниченным
-PERIOD_MAX_DAYS = 366
+    @model_validator(mode="after")
+    def check_dates(self) -> "OperationListParams":
+        if (self.date_from is None) != (self.date_to is None):
+            raise ValueError("date_from и date_to передаются только вместе")
+        if self.date_from is not None and self.date_to is not None:
+            if self.year is not None:
+                raise ValueError("нужен либо year/month, либо date_from/date_to")
+            check_period(self.date_from, self.date_to)
+        return self
 
 
 class PeriodParams(BaseSchema):
@@ -50,10 +72,7 @@ class PeriodParams(BaseSchema):
 
     @model_validator(mode="after")
     def check_period(self) -> "PeriodParams":
-        if self.date_from > self.date_to:
-            raise ValueError("date_from позже date_to")
-        if (self.date_to - self.date_from).days + 1 > PERIOD_MAX_DAYS:
-            raise ValueError(f"период длиннее {PERIOD_MAX_DAYS} дней")
+        check_period(self.date_from, self.date_to)
         return self
 
 

@@ -24,9 +24,7 @@ async def get_month_total(
 async def test_get_operations(client, create_user, create_category, create_operation):
     user = await create_user()
     food = await create_category(user, name="Продукты")
-    salary = await create_category(
-        user, name="Зарплата", is_profit=True, icon=None
-    )
+    salary = await create_category(user, name="Зарплата", is_profit=True, icon=None)
     old_op = await create_operation(
         food, sum=100, date=datetime(2026, 8, 1, 10, 0), comment="Хлеб"
     )
@@ -151,6 +149,12 @@ async def test_get_operations_filters(client, operations_for_filters, params, ex
         {"year": 2026, "month": 0},
         {"operation": "abc"},
         {"category_id": "abc"},
+        {"date_from": "2026-09-01"},
+        {"date_to": "2026-09-30"},
+        {"date_from": "2026-09-30", "date_to": "2026-09-01"},
+        {"date_from": "2025-01-01", "date_to": "2026-01-02"},
+        # Два фильтра по дате сразу двусмысленны
+        {"year": 2026, "month": 9, "date_from": "2026-09-01", "date_to": "2026-09-30"},
     ],
 )
 async def test_get_operations_invalid_params(client, create_user, params):
@@ -159,8 +163,40 @@ async def test_get_operations_invalid_params(client, create_user, params):
     response = await client.get(
         "/api/v1/operations", params=params, headers=auth_headers(user)
     )
-
     assert response.status_code == 422
+
+    # Контроль: корректные месяц и период проходят
+    for good in [
+        {"year": 2026, "month": 9},
+        {"date_from": "2025-01-01", "date_to": "2026-01-01"},
+    ]:
+        response = await client.get(
+            "/api/v1/operations", params=good, headers=auth_headers(user)
+        )
+        assert response.status_code == 200
+
+
+async def test_get_operations_by_date_range(
+    client, create_user, create_category, create_operation
+):
+    user = await create_user()
+    food = await create_category(user)
+    await create_operation(food, sum=1, date=datetime(2026, 9, 9, 23, 59, 59))
+    first_day = await create_operation(food, sum=10, date=datetime(2026, 9, 10))
+    last_day = await create_operation(
+        food, sum=100, date=datetime(2026, 9, 15, 23, 59, 59)
+    )
+    await create_operation(food, sum=1000, date=datetime(2026, 9, 16))
+
+    response = await client.get(
+        "/api/v1/operations",
+        params={"date_from": "2026-09-10", "date_to": "2026-09-15"},
+        headers=auth_headers(user),
+    )
+
+    assert response.status_code == 200
+    # Оба крайних дня входят целиком, соседние — нет; новые сверху
+    assert [op["id"] for op in response.json()["data"]] == [last_day.id, first_day.id]
 
 
 # ---------- POST /create ----------
