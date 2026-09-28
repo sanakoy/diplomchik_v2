@@ -1,16 +1,17 @@
-# Учёт личных финансов — API
+# Книжка — учёт личных финансов
 
 [![CI](https://github.com/sanakoy/diplomchik_v2/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/sanakoy/diplomchik_v2/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.13-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.141-009688)
 
-Бэкенд для учёта доходов и расходов: пользователь заводит категории, записывает операции и смотрит статистику по месяцам. Асинхронный FastAPI + PostgreSQL, авторизация на JWT с ротацией refresh-токенов, ограничение попыток входа через Redis.
+Веб-приложение для учёта доходов и расходов: пользователь заводит категории, записывает траты в два касания и смотрит, куда уходят деньги за месяц или любой период. Бэкенд — асинхронный FastAPI + PostgreSQL, авторизация на JWT с ротацией refresh-токенов, ограничение попыток входа через Redis. Фронтенд — React + TypeScript.
 
 ## Возможности
 
-- **Категории** доходов и расходов с суммой за текущий месяц
-- **Операции** с фильтрами по месяцу, категории и типу
-- **Статистика** за выбранный месяц: операции по дням, суммы по категориям, список месяцев с данными
+- **Запись в два касания:** плитка категории → сумма в окне
+- **Категории** доходов и расходов с иконками и суммой за месяц
+- **Структура месяца:** доли категорий в расходах и доходах
+- **Статистика** за месяц или любой период из календаря: график по дням стопками по категориям, рейтинг категорий, список записей с правкой и удалением
 - **Авторизация:** регистрация по email, вход, обновление и отзыв токенов, выход
 - **Изоляция данных:** каждый видит только свои категории и операции
 
@@ -18,13 +19,14 @@
 
 | | |
 |---|---|
-| Приложение | FastAPI, Pydantic 2, SQLAlchemy 2.0 (async), asyncpg |
+| Бэкенд | FastAPI, Pydantic 2, SQLAlchemy 2.0 (async), asyncpg |
+| Фронтенд | React 19, TypeScript, Vite, TanStack Query, React Router, Tailwind CSS, shadcn/ui, Recharts |
 | Хранилища | PostgreSQL 15, Redis 7 |
 | Миграции | Alembic |
 | Авторизация | PyJWT, bcrypt |
-| Тесты | pytest, pytest-asyncio, httpx |
-| Качество | ruff, black, mypy, GitHub Actions |
-| Окружение | uv, Docker, Docker Compose |
+| Тесты | pytest, pytest-asyncio, httpx, vitest |
+| Качество | ruff, black, mypy, oxlint, GitHub Actions |
+| Окружение | uv, npm, Docker, Docker Compose, nginx |
 
 ## Быстрый старт
 
@@ -48,13 +50,16 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 docker compose up -d --build
 ```
 
-Поднимутся приложение, PostgreSQL и Redis. Миграции применяются автоматически при старте контейнера. Документация API: **http://127.0.0.1:8000/docs**.
+Поднимутся фронтенд (nginx), бэкенд, PostgreSQL и Redis. Миграции применяются автоматически при старте контейнера бэкенда.
 
-Как пройти путь в Swagger: `POST /api/v1/auth/register` → `POST /api/v1/auth/login` → скопировать `access_token` → кнопка **Authorize** → остальные ручки.
+- Приложение: **http://localhost:8080** — зарегистрируйтесь и заведите первую категорию плиткой «+»
+- Документация API: **http://127.0.0.1:8000/docs**
+
+nginx отдаёт собранный фронтенд и проксирует `/api` в бэкенд: для браузера всё живёт на одном адресе, поэтому не нужен CORS, а refresh-cookie работает без дополнительных настроек.
 
 ## Разработка
 
-Приложение можно запускать на хосте, а в Docker держать только базы:
+Бэкенд можно запускать на хосте, а в Docker держать только базы:
 
 ```bash
 docker compose --profile test up -d postgres_diplomchik_v2 postgres_diplomchik_v2_test redis_diplomchik_v2
@@ -66,16 +71,30 @@ uv run uvicorn src.main:app --reload --port 8001    # сервер с автоп
 
 Тестовая база лежит в профиле `test` и без `--profile test` не поднимается.
 
+Фронтенд с горячей перезагрузкой (Vite проксирует `/api` на бэкенд из Docker, `127.0.0.1:8000`):
+
+```bash
+cd frontend
+npm ci
+npm run dev        # http://localhost:5173
+npm run gen:api    # типы API из OpenAPI бэкенда в src/api/schema.d.ts
+```
+
 ### Тесты и проверки
 
 ```bash
-uv run pytest                    # 127 тестов против настоящих PostgreSQL и Redis
+uv run pytest                    # 175 тестов против настоящих PostgreSQL и Redis
 uv run ruff check src tests      # линтер
 uv run black --check src tests   # форматирование
 uv run mypy                      # типы
+
+cd frontend
+npm run lint                     # oxlint
+npm test                         # vitest
+npm run build                    # проверка типов и сборка
 ```
 
-Всё это же запускает CI на каждый push в `main`/`develop` и на каждый pull request.
+Всё это же запускает CI на каждый push в `main`/`develop` и на каждый pull request, а заодно проверяет, что оба Docker-образа собираются.
 
 ## API
 
@@ -95,17 +114,17 @@ uv run mypy                      # типы
 
 | Метод | Путь | Что делает |
 |---|---|---|
-| GET | `/spending`, `/profit` | категории расходов или доходов с суммами за текущий месяц |
-| GET | `/statistic?operation=&year=&month=` | операции по дням и суммы по категориям за месяц |
-| POST | `/create` | создать категорию |
-| PATCH | `/update/{id}` | переименовать, сменить картинку |
+| GET | `/spending`, `/profit` | категории расходов или доходов с суммами за месяц (`year`+`month`, по умолчанию текущий) |
+| POST | `/create` | создать категорию; имя уникально в пределах типа, иначе 409 |
+| PATCH | `/update/{id}` | переименовать, сменить иконку |
 | DELETE | `/delete/{id}` | удалить вместе с операциями |
 
 **Операции** — `/api/v1/operations`
 
 | Метод | Путь | Что делает |
 |---|---|---|
-| GET | `/` | список с фильтрами `year`+`month`, `category_id`, `operation` |
+| GET | `/` | список с фильтрами: месяц (`year`+`month`) или период (`date_from`+`date_to`), `category_id`, `operation` |
+| GET | `/totals?date_from=&date_to=` | доход, расход, суммы категорий и суммы по дням за период — для статистики |
 | POST | `/create` | добавить операцию |
 | PATCH | `/update/{id}` | изменить сумму, комментарий, дату |
 | DELETE | `/delete/{id}` | удалить |
@@ -121,7 +140,8 @@ uv run mypy                      # типы
 
 ```mermaid
 flowchart LR
-    Client[Клиент] -->|HTTP| Router[Роутеры<br/>api/v1/views.py]
+    Client[Браузер] -->|HTTP| Nginx[nginx<br/>статика React-приложения]
+    Nginx -->|/api| Router[Роутеры<br/>api/v1/views.py]
     Router --> Auth[Зависимость<br/>авторизации]
     Router --> Service[Сервисы<br/>service.py]
     Service --> PG[(PostgreSQL)]
@@ -157,7 +177,13 @@ src/<домен>/
 
 **Воспроизводимое окружение.** Прямые зависимости — в `pyproject.toml`, точные версии всего дерева — в `uv.lock`. CI и Docker ставят их с `--locked` и падают, если lock разошёлся с описанием.
 
-**Docker-образ для прода.** Две стадии сборки, в образ не попадают pytest, mypy и прочие инструменты разработки (270 МБ вместо 461). Приложение работает не от root. Контейнер стартует только после того, как PostgreSQL и Redis прошли healthcheck.
+**Docker-образы для прода.** Обе сборки в две стадии: в образ бэкенда не попадают pytest, mypy и прочие инструменты разработки (270 МБ вместо 461), в образ фронтенда — Node и `node_modules`, только nginx и статика (83 МБ). Оба процесса работают не от root. Контейнеры стартуют по цепочке healthcheck: базы → бэкенд → nginx.
+
+**nginx перед приложением.** Файлы сборки с хешем в имени кешируются на год, `index.html` — нет, поэтому после деплоя браузер сразу получает новую версию. Отсутствующий старый чанк отдаётся как 404, а не `index.html`: вкладка, открытая до деплоя, покажет «Обновите страницу», а не упадёт на HTML вместо JavaScript. Заголовки безопасности, включая Content-Security-Policy без `unsafe-inline` для скриптов.
+
+**Настоящий IP клиента за прокси.** Лимит попыток входа по IP за nginx видел бы адрес самого nginx и стал бы общим на всех. nginx передаёт адрес клиента в `X-Forwarded-For`, но присланный клиентом заголовок не дописывает, а заменяет: иначе подстановкой случайного IP лимит обходился бы.
+
+**Обновление токена в нескольких вкладках.** Refresh ротируется на каждый запрос, а повтор старого токена гасит сессию. Поэтому вкладки обновляют токен по очереди, под блокировкой Web Locks: браузер, восстановивший несколько вкладок сразу, не выкидывает пользователя на вход.
 
 ## Структура проекта
 
@@ -173,7 +199,11 @@ src/<домен>/
 │   └── main.py          # приложение, CORS, lifespan
 ├── migrations/          # миграции Alembic
 ├── tests/               # pytest
-├── docker/              # entrypoint контейнера
+├── docker/              # entrypoint контейнера бэкенда
+├── frontend/            # React-приложение
+│   ├── src/
+│   ├── docker/          # конфигурация nginx
+│   └── Dockerfile
 ├── Dockerfile
 ├── docker-compose.yml
 ├── pyproject.toml       # зависимости и настройки инструментов
@@ -182,6 +212,6 @@ src/<домен>/
 
 ## Что дальше
 
-- деплой с публикацией Docker-образа в GitHub Container Registry
-- веб-интерфейс
+- деплой с публикацией Docker-образов в GitHub Container Registry
+- e2e-тесты основных сценариев на Playwright
 - нагрузочное тестирование и оптимизация по замерам
