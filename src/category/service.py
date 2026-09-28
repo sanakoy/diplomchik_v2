@@ -76,7 +76,7 @@ class CategoryService:
                     name=cat_obj.name,
                     cat_sum=sum_val,
                     is_profit=cat_obj.is_profit,
-                    image_url=cat_obj.image_url,
+                    icon=cat_obj.icon,
                     user_id=cat_obj.user_id,
                 )
             )
@@ -126,7 +126,7 @@ class CategoryService:
                     sum=op_sum,
                     comment=op.comment,
                     cat_name=cat_name,
-                    image_url=op.category.image_url,
+                    icon=op.category.icon,
                 )
             )
 

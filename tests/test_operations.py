@@ -25,7 +25,7 @@ async def test_get_operations(client, create_user, create_category, create_opera
     user = await create_user()
     food = await create_category(user, name="Продукты")
     salary = await create_category(
-        user, name="Зарплата", is_profit=True, image_url=None
+        user, name="Зарплата", is_profit=True, icon=None
     )
     old_op = await create_operation(
         food, sum=100, date=datetime(2026, 8, 1, 10, 0), comment="Хлеб"
@@ -47,7 +47,7 @@ async def test_get_operations(client, create_user, create_category, create_opera
                 "date": "2026-09-05T09:00:00",
                 "category_id": salary.id,
                 "cat_name": "Зарплата",
-                "image_url": None,
+                "icon": None,
                 "is_profit": True,
             },
             {
@@ -57,7 +57,7 @@ async def test_get_operations(client, create_user, create_category, create_opera
                 "date": "2026-08-01T10:00:00",
                 "category_id": food.id,
                 "cat_name": "Продукты",
-                "image_url": "/static/img/food.png",
+                "icon": "shopping-cart",
                 "is_profit": False,
             },
         ]

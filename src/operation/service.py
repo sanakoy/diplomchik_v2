@@ -57,7 +57,7 @@ class OperationService:
                     date=op.date,
                     category_id=op.category_id,
                     cat_name=op.category.name,
-                    image_url=op.category.image_url,
+                    icon=op.category.icon,
                     is_profit=op.category.is_profit,
                 )
                 for op in operations

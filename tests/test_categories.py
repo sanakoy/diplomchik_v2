@@ -26,7 +26,7 @@ async def test_get_spending_categories(
 ):
     user = await create_user()
     food = await create_category(user, name="Продукты")
-    await create_category(user, name="Транспорт", image_url=None)
+    await create_category(user, name="Транспорт", icon=None)
     await create_operation(food, sum=100, date=current_month_date(day=1))
     await create_operation(food, sum=50.5, date=current_month_date(day=2))
 
@@ -45,11 +45,11 @@ async def test_get_spending_categories(
         "name": "Продукты",
         "cat_sum": 150.5,
         "is_profit": False,
-        "image_url": "/static/img/food.png",
+        "icon": "shopping-cart",
         "user_id": user.id,
     }
     assert cats["Транспорт"]["cat_sum"] == 0.0
-    assert cats["Транспорт"]["image_url"] is None
+    assert cats["Транспорт"]["icon"] is None
 
 
 async def test_get_profit_categories(
@@ -161,7 +161,7 @@ async def test_categories_of_other_user_are_hidden(
 async def test_get_statistic(client, create_user, create_category, create_operation):
     user = await create_user()
     food = await create_category(user, name="Продукты")
-    cafe = await create_category(user, name="Кафе", image_url=None)
+    cafe = await create_category(user, name="Кафе", icon=None)
     date_1 = current_month_date(day=1)
     date_2 = current_month_date(day=2)
     op_1 = await create_operation(food, sum=100, date=date_1, comment="Хлеб")
@@ -189,14 +189,14 @@ async def test_get_statistic(client, create_user, create_category, create_operat
                 "sum": 200,
                 "comment": "Сыр",
                 "cat_name": "Продукты",
-                "image_url": "/static/img/food.png",
+                "icon": "shopping-cart",
             },
             {
                 "id": op_2.id,
                 "sum": 300,
                 "comment": "Кофе",
                 "cat_name": "Кафе",
-                "image_url": None,
+                "icon": None,
             },
         ],
         day_key(date_1): [
@@ -205,7 +205,7 @@ async def test_get_statistic(client, create_user, create_category, create_operat
                 "sum": 100,
                 "comment": "Хлеб",
                 "cat_name": "Продукты",
-                "image_url": "/static/img/food.png",
+                "icon": "shopping-cart",
             },
         ],
     }
@@ -298,7 +298,7 @@ async def test_create_category(client, create_user, operation, is_profit):
 
     response = await client.post(
         "/api/v1/categories/create",
-        json={"name": "Новая", "image_url": "/img.png", "operation": operation},
+        json={"name": "Новая", "icon": "gift", "operation": operation},
         headers=auth_headers(user),
     )
 
@@ -307,7 +307,7 @@ async def test_create_category(client, create_user, operation, is_profit):
     assert body["message"] == "Категория успешно создана"
     category = await get_obj(Category, body["cr_category_id"])
     assert category.name == "Новая"
-    assert category.image_url == "/img.png"
+    assert category.icon == "gift"
     assert category.is_profit is is_profit
     assert category.user_id == user.id
 
@@ -323,7 +323,7 @@ async def test_create_category_without_image(client, create_user):
 
     assert response.status_code == 200
     category = await get_obj(Category, response.json()["cr_category_id"])
-    assert category.image_url is None
+    assert category.icon is None
 
 
 @pytest.mark.parametrize("name", ["Кафе", "кафе", "  КАФЕ  "])
@@ -456,7 +456,7 @@ async def test_create_category_validation(client, create_user, json):
 
 async def test_update_category(client, create_user, create_category):
     user = await create_user()
-    category = await create_category(user, name="Старое", image_url="/old.png")
+    category = await create_category(user, name="Старое", icon="coffee")
 
     response = await client.patch(
         f"/api/v1/categories/update/{category.id}",
@@ -472,7 +472,7 @@ async def test_update_category(client, create_user, create_category):
     updated = await get_obj(Category, category.id)
     assert updated.name == "Новое"
     # Непереданные поля не затираются
-    assert updated.image_url == "/old.png"
+    assert updated.icon == "coffee"
 
 
 async def test_update_nonexistent_category(client, create_user, create_category):
@@ -620,3 +620,60 @@ async def test_update_category_rejects_extra_fields(
 
     assert response.status_code == 422
     assert (await get_obj(Category, category.id)).name == "Старое"
+
+
+# ---------- Иконка категории ----------
+
+
+@pytest.mark.parametrize("icon", ["Shopping Cart", "../etc", "к", "a" * 41, ""])
+async def test_create_category_invalid_icon(client, create_user, icon):
+    user = await create_user()
+
+    response = await client.post(
+        "/api/v1/categories/create",
+        json={"name": "Кафе", "operation": "spending", "icon": icon},
+        headers=auth_headers(user),
+    )
+    assert response.status_code == 422
+
+    # Контроль: та же категория с ключом правильного формата создаётся
+    response = await client.post(
+        "/api/v1/categories/create",
+        json={"name": "Кафе", "operation": "spending", "icon": "coffee"},
+        headers=auth_headers(user),
+    )
+    assert response.status_code == 200
+    category = await get_obj(Category, response.json()["cr_category_id"])
+    assert category.icon == "coffee"
+
+
+async def test_update_category_icon(client, create_user, create_category):
+    user = await create_user()
+    category = await create_category(user, name="Кафе", icon="coffee")
+
+    response = await client.patch(
+        f"/api/v1/categories/update/{category.id}",
+        json={"icon": "Not Valid"},
+        headers=auth_headers(user),
+    )
+    assert response.status_code == 422
+    assert (await get_obj(Category, category.id)).icon == "coffee"
+
+    response = await client.patch(
+        f"/api/v1/categories/update/{category.id}",
+        json={"icon": "utensils"},
+        headers=auth_headers(user),
+    )
+    assert response.status_code == 200
+    assert (await get_obj(Category, category.id)).icon == "utensils"
+
+    # null сбрасывает иконку: фронт подберёт её по названию
+    response = await client.patch(
+        f"/api/v1/categories/update/{category.id}",
+        json={"icon": None},
+        headers=auth_headers(user),
+    )
+    assert response.status_code == 200
+    updated = await get_obj(Category, category.id)
+    assert updated.icon is None
+    assert updated.name == "Кафе"

@@ -20,7 +20,9 @@ class Category(Base):
 
     name: Mapped[str] = mapped_column(String(80))
     is_profit: Mapped[bool] = mapped_column()
-    image_url: Mapped[str] = mapped_column(nullable=True)
+    # Ключ иконки из набора фронта («shopping-cart»), а не адрес картинки:
+    # набор иконок и их вид определяет фронт, бэк хранит только выбор
+    icon: Mapped[str | None] = mapped_column(String(40), nullable=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"))
     date_create: Mapped[datetime] = mapped_column(nullable=True)
 

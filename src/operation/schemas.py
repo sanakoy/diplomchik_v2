@@ -86,7 +86,7 @@ class OperationView(BaseSchema):
     date: datetime | None = None
     category_id: int
     cat_name: str
-    image_url: str | None = None
+    icon: str | None = None
     is_profit: bool
 
 

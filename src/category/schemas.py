@@ -10,6 +10,9 @@ from src.schemas import BaseSchema, reject_explicit_nulls
 CategoryName = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)
 ]
+# Ключ иконки: какие иконки есть, знает фронт, бэк проверяет только формат.
+# Неизвестный фронту ключ он покажет иконкой по умолчанию
+CategoryIcon = Annotated[str, StringConstraints(pattern=r"^[a-z0-9-]{1,40}$")]
 
 
 class CategoryView(BaseSchema):
@@ -17,7 +20,7 @@ class CategoryView(BaseSchema):
     name: str
     cat_sum: float | None = None
     is_profit: bool
-    image_url: str | None = None
+    icon: str | None = None
     user_id: int
 
 
@@ -37,7 +40,7 @@ class OperationInGroup(BaseSchema):
     sum: float
     comment: str | None = None
     cat_name: str
-    image_url: str | None
+    icon: str | None
 
 
 class GroupedOperationResponse(BaseSchema):
@@ -56,7 +59,7 @@ class GroupedOperationResponse(BaseSchema):
 
 class CreateCategoryRequest(BaseSchema):
     name: CategoryName
-    image_url: str | None = None
+    icon: CategoryIcon | None = None
     # Literal, а не str: любое значение, кроме "profit", раньше молча давало расход
     operation: Literal["profit", "spending"] = Field(exclude=True)
     is_profit: bool | None = None
@@ -73,7 +76,8 @@ class UpdateCategoryRequest(BaseSchema):
     model_config = ConfigDict(from_attributes=True, extra="forbid")
 
     name: CategoryName | None = None
-    image_url: str | None = None
+    # null можно: так иконку сбрасывают, и фронт подберёт её по названию
+    icon: CategoryIcon | None = None
 
     @model_validator(mode="before")
     @classmethod

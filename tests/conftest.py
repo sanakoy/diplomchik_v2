@@ -104,13 +104,13 @@ def create_category():
         user: User,
         name: str | None = None,
         is_profit: bool = False,
-        image_url: str | None = "/static/img/food.png",
+        icon: str | None = "shopping-cart",
     ) -> Category:
         return await add_obj(
             Category(
                 name=name or f"category_{next(category_counter)}",
                 is_profit=is_profit,
-                image_url=image_url,
+                icon=icon,
                 user_id=user.id,
             )
         )

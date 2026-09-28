@@ -3,6 +3,7 @@ from alembic.autogenerate import compare_metadata
 from alembic.config import Config
 from alembic.migration import MigrationContext
 from alembic.script import ScriptDirectory
+from sqlalchemy import text
 
 import src  # noqa: F401 — регистрирует все модели в Base.metadata
 from src.category.models import Category
@@ -45,30 +46,70 @@ async def test_migrations_stairway():
                 await conn.run_sync(run_alembic, alembic_command, target)
 
 
-async def test_unique_category_name_migration_renames_duplicates(
-    create_user, create_category
-):
-    # Схема до индекса уникальности: дубли там ещё можно создать
+async def insert_category(user_id: int, name: str, **columns) -> int:
+    """Категория обычным SQL: модель описывает схему head, а тест работает
+    со схемой до миграции, где колонок модели может ещё не быть."""
+    values = {"name": name, "is_profit": False, "user_id": user_id, **columns}
+    names = ", ".join(values)
+    params = ", ".join(f":{key}" for key in values)
     async with TEST_ENGINE.begin() as conn:
-        await conn.run_sync(run_alembic, command.downgrade, "b50b4d255fab")
-    try:
-        user = await create_user()
-        first = await create_category(user, name="Кафе")
-        duplicate = await create_category(user, name="кафе")
-        long_duplicate_base = await create_category(user, name="к" * 80)
-        long_duplicate = await create_category(user, name="К" * 80)
-        # Не дубли: другой тип и другой пользователь
-        profit = await create_category(user, name="Кафе", is_profit=True)
-        other_user = await create_category(await create_user(), name="Кафе")
-    finally:
-        async with TEST_ENGINE.begin() as conn:
-            await conn.run_sync(run_alembic, command.upgrade, "head")
+        result = await conn.execute(
+            text(f"INSERT INTO category ({names}) VALUES ({params}) RETURNING id"),
+            values,
+        )
+        return result.scalar_one()
 
-    assert (await get_obj(Category, first.id)).name == "Кафе"
-    assert (await get_obj(Category, duplicate.id)).name == f"кафе ({duplicate.id})"
-    assert (await get_obj(Category, long_duplicate_base.id)).name == "к" * 80
-    renamed = (await get_obj(Category, long_duplicate.id)).name
+
+async def migrate_from(revision: str):
+    async with TEST_ENGINE.begin() as conn:
+        await conn.run_sync(run_alembic, command.downgrade, revision)
+
+
+async def migrate_to_head():
+    async with TEST_ENGINE.begin() as conn:
+        await conn.run_sync(run_alembic, command.upgrade, "head")
+
+
+async def test_unique_category_name_migration_renames_duplicates(create_user):
+    user = await create_user()
+    other_user = await create_user()
+    # Схема до индекса уникальности: дубли там ещё можно создать
+    await migrate_from("b50b4d255fab")
+    try:
+        first = await insert_category(user.id, "Кафе")
+        duplicate = await insert_category(user.id, "кафе")
+        long_duplicate_base = await insert_category(user.id, "к" * 80)
+        long_duplicate = await insert_category(user.id, "К" * 80)
+        # Не дубли: другой тип и другой пользователь
+        profit = await insert_category(user.id, "Кафе", is_profit=True)
+        other = await insert_category(other_user.id, "Кафе")
+    finally:
+        await migrate_to_head()
+
+    assert (await get_obj(Category, first)).name == "Кафе"
+    assert (await get_obj(Category, duplicate)).name == f"кафе ({duplicate})"
+    assert (await get_obj(Category, long_duplicate_base)).name == "к" * 80
+    renamed = (await get_obj(Category, long_duplicate)).name
     # Суффикс не выводит имя за пределы колонки String(80)
-    assert renamed == "К" * 60 + f" ({long_duplicate.id})"
-    assert (await get_obj(Category, profit.id)).name == "Кафе"
-    assert (await get_obj(Category, other_user.id)).name == "Кафе"
+    assert renamed == "К" * 60 + f" ({long_duplicate})"
+    assert (await get_obj(Category, profit)).name == "Кафе"
+    assert (await get_obj(Category, other)).name == "Кафе"
+
+
+async def test_icon_migration_keeps_icon_keys_and_drops_image_paths(create_user):
+    user = await create_user()
+    # Схема до переименования: колонка ещё называется image_url
+    await migrate_from("240792155a36")
+    try:
+        old_path = await insert_category(
+            user.id, "Продукты", image_url="/static/img/food.png"
+        )
+        icon_key = await insert_category(user.id, "Кафе", image_url="coffee")
+        empty = await insert_category(user.id, "Связь", image_url=None)
+    finally:
+        await migrate_to_head()
+
+    # Путь к картинке старого фронта — не ключ иконки: обнуляется
+    assert (await get_obj(Category, old_path)).icon is None
+    assert (await get_obj(Category, icon_key)).icon == "coffee"
+    assert (await get_obj(Category, empty)).icon is None
