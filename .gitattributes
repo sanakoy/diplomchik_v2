@@ -6,3 +6,6 @@
 # даже при core.autocrlf=true на Windows
 *.sh text eol=lf
 Dockerfile text eol=lf
+
+# Конфиги nginx из образа фронта: тоже читаются в Linux-контейнере
+frontend/docker/* text eol=lf

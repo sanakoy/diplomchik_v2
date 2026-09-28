@@ -1,0 +1,12 @@
+# Зависимости ставит npm ci внутри образа, под Linux: локальные node_modules
+# собраны под Windows и только замедлили бы передачу контекста
+node_modules
+dist
+
+# Локальные настройки и секреты в образ не попадают
+.env
+.env.*
+*.local
+
+Dockerfile
+.dockerignore

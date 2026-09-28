@@ -12,6 +12,12 @@ services:
       DB_HOST: postgres_diplomchik_v2
       DB_PORT: 5432
       REDIS_URL: redis://redis_diplomchik_v2:6379/0
+      # Браузер ходит в API через nginx из сервиса frontend, и адрес соединения —
+      # это адрес nginx. uvicorn возьмёт настоящий адрес клиента из
+      # X-Forwarded-For, но только от доверенных адресов. «*» допустимо, пока порт
+      # опубликован лишь на 127.0.0.1 (подделать заголовок может только процесс
+      # на этой машине). В продакшене здесь адрес или подсеть обратного прокси
+      FORWARDED_ALLOW_IPS: "*"
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:
@@ -26,6 +32,24 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: frontend_diplomchik_v2
+    # Всё приложение — на http://localhost:8080: nginx отдаёт фронт
+    # и проксирует /api в сервис app
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      # nginx при старте проверяет, что имя app разрешается: ждём бэкенд
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
   postgres_diplomchik_v2:
