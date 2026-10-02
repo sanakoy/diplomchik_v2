@@ -23,7 +23,7 @@ export function MonthSummary({ netLabel, summary }: MonthSummaryProps) {
           {formatAmount(summary.expense)}
         </dd>
       </div>
-      {/* Итог — главная цифра страницы, как остаток в книжке */}
+      {/* Итог — главная цифра страницы, как остаток на счёте */}
       <div className="col-span-2 sm:col-span-1 sm:text-right">
         <dt className="text-sm text-muted-foreground">{netLabel}</dt>
         <dd

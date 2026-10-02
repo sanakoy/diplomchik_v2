@@ -33,7 +33,7 @@ function summaryOf(totals: PeriodTotals) {
 }
 
 export function StatisticsPage() {
-  // Период живёт в адресе, как месяц в книжке: работает «Назад», ссылку можно сохранить
+  // Период живёт в адресе, как месяц на главной: работает «Назад», ссылку можно сохранить
   const [searchParams, setSearchParams] = useSearchParams()
   const period = parsePeriod(searchParams)
   const { from, to } = periodDates(period)

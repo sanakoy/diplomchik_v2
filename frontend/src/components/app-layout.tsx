@@ -26,7 +26,7 @@ export function AppLayout() {
       {/* На телефоне три раздела, название и «Выйти» в строку не влезают:
           меню уходит второй строкой (order-last + w-full), с sm — рядом с названием */}
       <header className="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-rule py-4">
-        <p className="text-lg font-semibold">Книжка</p>
+        <p className="text-lg font-semibold">Money Tracker</p>
         <nav
           aria-label="Разделы"
           className="order-last flex w-full gap-5 text-sm sm:order-none sm:w-auto sm:gap-4"

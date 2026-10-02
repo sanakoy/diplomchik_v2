@@ -101,7 +101,7 @@ function NewOperationForm({
       {
         sum,
         category_id: category.id,
-        // Бэк хранит дату со временем, а в книжке важен только день
+        // Бэк хранит дату со временем, а в интерфейсе важен только день
         date: `${date}T00:00:00`,
         comment: comment.trim() || null,
       },
@@ -133,7 +133,7 @@ function NewOperationForm({
             {kindLabel}: {category.name}
           </DialogTitle>
           <DialogDescription>
-            Новая запись в книжке.{' '}
+            Новая запись.{' '}
             {/* Управление категорией живёт здесь: плитка и так ведёт в её окно */}
             <button
               type="button"

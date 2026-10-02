@@ -1,6 +1,6 @@
 import { formatAmount } from '@/lib/format'
 
-// Пример страницы книжки: показывает, чем будет заниматься пользователь.
+// Пример страницы учёта: показывает, чем будет заниматься пользователь.
 // Суммы и остаток сходятся: 85 000 − 2 350 − 1 200 − 640 + 12 500 = 93 310
 const SAMPLE_ENTRIES = [
   { date: '03.09', title: 'Зарплата', amount: 85000 },
@@ -17,7 +17,7 @@ export function PassbookPreview() {
     // Иллюстрация, а не данные пользователя: скринридеру её читать незачем
     <div aria-hidden="true" className="relative w-full max-w-md">
       <p className="text-sm text-muted-foreground">Доходы и расходы за сентябрь</p>
-      <p className="mt-1 text-2xl font-semibold">Книжка учёта</p>
+      <p className="mt-1 text-2xl font-semibold">Учёт финансов</p>
 
       <table className="mt-8 w-full border-collapse text-[15px]">
         <thead>

@@ -6,7 +6,7 @@ import { currentMonth, isSameMonth, monthTitle, shiftMonth, type YearMonth } fro
 interface MonthSwitcherProps {
   month: YearMonth
   onChange: (month: YearMonth) => void
-  /** Уровень заголовка: в книжке месяц — главный заголовок, в статистике — нет. */
+  /** Уровень заголовка: на главной месяц — главный заголовок, в статистике — нет. */
   titleAs?: 'h1' | 'h2'
 }
 

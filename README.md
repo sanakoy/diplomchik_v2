@@ -1,4 +1,4 @@
-# Книжка — учёт личных финансов
+# Money Tracker — учёт личных финансов
 
 [![CI](https://github.com/sanakoy/money-tracker/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sanakoy/money-tracker/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.13-blue)

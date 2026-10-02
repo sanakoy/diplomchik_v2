@@ -22,7 +22,7 @@ import { useMonthOperations } from '@/operations/queries'
 import { summarize } from '@/operations/summary'
 
 // Окно категории нужно редко, а тянет за собой выбор иконки (Popover и
-// позиционирование): его код скачивается при первом открытии, а не с книжкой
+// позиционирование): его код скачивается при первом открытии, а не с главной страницей
 const loadCategoryDialog = () => import('@/categories/category-dialog')
 const CategoryDialog = lazy(async () => ({ default: (await loadCategoryDialog()).CategoryDialog }))
 
@@ -65,7 +65,7 @@ export function LedgerPage() {
   // когда окно записи закроется совсем
   const pendingCategoryEdit = useRef<Category | null>(null)
 
-  // Код окна категории качаем заранее, сразу после показа книжки: в основной
+  // Код окна категории качаем заранее, сразу после показа главной: в основной
   // бандл он не попадает, но к первому нажатию «+» уже готов, без задержки
   useEffect(() => {
     void loadCategoryDialog()
