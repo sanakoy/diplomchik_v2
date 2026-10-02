@@ -62,7 +62,7 @@ nginx отдаёт собранный фронтенд и проксирует `
 Бэкенд можно запускать на хосте, а в Docker держать только базы:
 
 ```bash
-docker compose --profile test up -d postgres_diplomchik_v2 postgres_diplomchik_v2_test redis_diplomchik_v2
+docker compose --profile test up -d postgres postgres_test redis
 
 uv sync                                             # окружение по pyproject.toml и uv.lock
 uv run alembic upgrade head                         # миграции

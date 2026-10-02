@@ -154,7 +154,7 @@ jobs:
       # Только сборка, без публикации: ловит сломанный Dockerfile или
       # зависимость, которая ставится локально, но не в чистом образе
       - name: Бэкенд
-        run: docker build --tag diplomchik-backend .
+        run: docker build --tag money-tracker-backend .
 
       - name: Фронтенд
-        run: docker build --tag diplomchik-frontend frontend
+        run: docker build --tag money-tracker-frontend frontend

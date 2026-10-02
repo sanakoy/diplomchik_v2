@@ -1,17 +1,22 @@
 # Переменные берутся из .env рядом с этим файлом (см. .env.example).
 # Запись ${VAR:?текст} означает: без этой переменной compose не стартует
 # и скажет, чего не хватает, вместо тихого запуска с пустым паролем.
+
+# Имя проекта задано явно, иначе compose берёт его из имени папки,
+# и тома с контейнерами зависят от того, куда склонировали репозиторий
+name: money-tracker
+
 services:
   app:
     build: .
-    container_name: app_diplomchik_v2
+    container_name: money-tracker-app
     # Настройки приложения — из .env, кроме адресов: внутри сети compose
     # контейнеры обращаются друг к другу по имени сервиса, а не по 127.0.0.1
     env_file: .env
     environment:
-      DB_HOST: postgres_diplomchik_v2
+      DB_HOST: postgres
       DB_PORT: 5432
-      REDIS_URL: redis://redis_diplomchik_v2:6379/0
+      REDIS_URL: redis://redis:6379/0
       # Браузер ходит в API через nginx из сервиса frontend, и адрес соединения —
       # это адрес nginx. uvicorn возьмёт настоящий адрес клиента из
       # X-Forwarded-For, но только от доверенных адресов. «*» допустимо, пока порт
@@ -21,9 +26,9 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:
-      postgres_diplomchik_v2:
+      postgres:
         condition: service_healthy
-      redis_diplomchik_v2:
+      redis:
         condition: service_healthy
     healthcheck:
       # Без обращения к БД: /health отвечает за «процесс жив», а не «зависимости на месте»
@@ -36,7 +41,7 @@ services:
 
   frontend:
     build: ./frontend
-    container_name: frontend_diplomchik_v2
+    container_name: money-tracker-frontend
     # Всё приложение — на http://localhost:8080: nginx отдаёт фронт
     # и проксирует /api в сервис app
     ports:
@@ -52,9 +57,9 @@ services:
       retries: 5
     restart: unless-stopped
 
-  postgres_diplomchik_v2:
+  postgres:
     image: postgres:15
-    container_name: db_diplomchik_v2
+    container_name: money-tracker-db
     environment:
       POSTGRES_USER: ${DB_USER:?задайте DB_USER в .env}
       POSTGRES_PASSWORD: ${DB_PASSWORD:?задайте DB_PASSWORD в .env}
@@ -62,7 +67,7 @@ services:
     ports:
       - "127.0.0.1:${DB_PORT:-5435}:5432"
     volumes:
-      - postgres_data_diplomchik_v2:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
       interval: 5s
@@ -70,27 +75,27 @@ services:
       retries: 10
     restart: unless-stopped
 
-  postgres_diplomchik_v2_test:
+  postgres_test:
     # Нужна только для pytest, поэтому по умолчанию не поднимается:
     # docker compose --profile test up -d
     profiles: [ "test" ]
     image: postgres:15
-    container_name: db_diplomchik_v2_test
+    container_name: money-tracker-db-test
     environment:
       # Значения по умолчанию, а не ${VAR:?}: compose разбирает весь файл целиком,
       # и на сервере без TEST_DB_* он бы не запустился даже без этого профиля
       POSTGRES_USER: ${TEST_DB_USER:-user}
       POSTGRES_PASSWORD: ${TEST_DB_PASSWORD:-test}
-      POSTGRES_DB: ${TEST_DB_NAME:-db_diplomchik_v2_test}
+      POSTGRES_DB: ${TEST_DB_NAME:-money_tracker_test}
     ports:
       - "127.0.0.1:${TEST_DB_PORT:-5436}:5432"
     volumes:
-      - postgres_data_diplomchik_v2_test:/var/lib/postgresql/data
+      - postgres_data_test:/var/lib/postgresql/data
     restart: unless-stopped
 
-  redis_diplomchik_v2:
+  redis:
     image: redis:7-alpine
-    container_name: redis_diplomchik_v2
+    container_name: money-tracker-redis
     ports:
       - "127.0.0.1:6379:6379"
     healthcheck:
@@ -101,5 +106,5 @@ services:
     restart: unless-stopped
 
 volumes:
-  postgres_data_diplomchik_v2:
-  postgres_data_diplomchik_v2_test:
+  postgres_data:
+  postgres_data_test:

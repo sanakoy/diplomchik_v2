@@ -1,5 +1,5 @@
 [project]
-name = "diplomchik-v2"
+name = "money-tracker"
 version = "0.1.0"
 description = "Бэкенд для учёта личных финансов: категории, операции, статистика"
 requires-python = ">=3.13"
