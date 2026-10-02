@@ -9,3 +9,9 @@ Dockerfile text eol=lf
 
 # Конфиги nginx из образа фронта: тоже читаются в Linux-контейнере
 frontend/docker/* text eol=lf
+
+# Статистика языков на GitHub: не считать чужой и сгенерированный код.
+# Типы API генерирует openapi-typescript (npm run gen:api),
+# компоненты ui скопированы из shadcn/ui
+frontend/src/api/schema.d.ts linguist-generated=true
+frontend/src/components/ui/** linguist-vendored=true

@@ -1,6 +1,6 @@
 # Книжка — учёт личных финансов
 
-[![CI](https://github.com/sanakoy/diplomchik_v2/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/sanakoy/diplomchik_v2/actions/workflows/ci.yml)
+[![CI](https://github.com/sanakoy/money-tracker/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sanakoy/money-tracker/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.13-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.141-009688)
 
@@ -33,8 +33,8 @@
 Нужен только Docker.
 
 ```bash
-git clone https://github.com/sanakoy/diplomchik_v2.git
-cd diplomchik_v2
+git clone https://github.com/sanakoy/money-tracker.git
+cd money-tracker
 cp .env.example .env
 ```
 
